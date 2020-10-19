@@ -17,8 +17,9 @@ The process to create a video is:
 - Create round config files for each round from the [template](template.yaml) ([more info](#round-config-files)).
 - Run the Cock Hero Assembly Program with the round config filenames as arguments ([more info](#Usage)).
 - If mutltiple versions are generated for each clip (`--versions` is more than 1), select your prefered version 
-        for each clip, using the GUI that pops up. **Note**: 4K inputs are very slow to preview.
-- Enjoy
+        for each clip, using the GUI that pops up. **Note**: 4K inputs are *very* slow to preview.
+- Wait (this may take several hours).
+- Enjoy the final output video!
 
 This is a work-in-progress. If you find a bug or would like a new feature, please see the [contributing section](#Contributing).
 
@@ -114,8 +115,9 @@ This command-line option allows you to customize the random clips that are chose
 - The clips will be previewed in the GUI, on repeat until one is chosen.
 - Choose which version/clip is included by clicking on it or using the number keys 
     <kbd>1</kbd> - <kbd>9</kbd> corresponding to the position from top left:
-    |1|2|
+    | | |
     |-|-|
+    |1|2|
     |3|4|
 - If preview window is exited or <kbd>Esc</kbd> is hit, the rest of the round's clips
     will be selected without user input (no more GUI / one version).
