@@ -1,0 +1,27 @@
+# Comments like this can be removed or left in
+name: Domesticated Cocks # Displayed during round transitions
+speed: 5
+music: /mnt/d/Downloads/RoosterHero/01/The.Entertainer.wav
+beats: /mnt/d/Downloads/RoosterHero/01/beat_track.wav
+beatmeter: /mnt/d/Downloads/RoosterHero/01/beats_folder/
+bpm: 93 # Beats Per Minute of song
+duration: 12 # Length of round (should be length of song)
+sources:
+  - /mnt/d/Downloads/A_barnyard_with_chickens.mp4  
+  - /mnt/d/Downloads/rooster.mp4
+credits:
+  audio:
+    - artist: Scott Joplin # Probably not the best song,
+      song: The Entertainer # but it's in the public domain :D
+  video:
+    - studio: Videezy
+      title: A Barnyard With Chickens
+      date: 2019.10.19
+      performers:
+        - Father Rooster
+        - Rooster Wife
+    - studio: Videezy
+      title: Rooster Walking Around
+      date: 2019.10.19
+      performers:
+        - The Blackest Cock
