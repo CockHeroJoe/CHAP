@@ -15,13 +15,13 @@ The process to create a video is:
 - For each song, manually create beat tracks and generate sound and images with the Beatmeter Generator 
     (organizing these outputs is why you want separate folders for each song).
 - Create round config files for each round from the [template](template.yaml) ([more info](#round-config-files)).
-- Run the Cock Hero Assembly Program with the round config filenames as arguments ([more info](#Usage)).
+- Run the Cock Hero Assembly Program with the round config filenames as arguments ([more info](#usage)).
 - If mutltiple versions are generated for each clip (`--versions` is more than 1), select your prefered version 
         for each clip, using the GUI that pops up. **Note**: 4K inputs are *very* slow to preview.
 - Wait (this may take several hours).
 - Enjoy the final output video!
 
-This is a work-in-progress. If you find a bug or would like a new feature, please see the [contributing section](#Contributing).
+This is a work-in-progress. If you find a bug or would like a new feature, please see the [contributing section](#contributing).
 
 ## Example Output
 
@@ -63,11 +63,11 @@ Individual rounds are output by default
 - `-y` or `--ydim`: The output height (in pixels) of generated video, default 1080
 - `-f` or `--fps`: The output framerate (in frames per second) of generated video, default 30
 - `-o` or `--output`: The output basename for generated video(s), default "Random XXXX"
-- `-v` or `--versions`: The number of [versions](#Versions) of each clip, default 1 (not displayed)
+- `-v` or `--versions`: The number of [versions](#versions) of each clip, default 1 (not displayed)
 - `-r` or `--raw`: Output videos in as raw (uncompressed) `.avi` files with `png` codec
 - `-c` or `--cache`: How often to save output videos:
     - default: "round" degrades quality slightly, but crashes only lose 1 round at most 
-        (see  [recovery](#Recovery))
+        (see  [recovery](#recovery))
     - option: "all" uses tonnes of memory (many gigs per round) and will crash on big projects
 
 ## Install
