@@ -24,7 +24,7 @@ This is a work-in-progress. If you find a bug or would like a new feature, pleas
 
 ## Example Output
 
-!["Rooster Hero"]("rooster-hero.gif")
+!["Rooster Hero"](rooster-hero.gif)
 
 Free Stock footage of roosters from [Videezy](http://www.videezy.com)
 
