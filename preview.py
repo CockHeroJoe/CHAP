@@ -2,11 +2,14 @@ import numpy as np
 import pygame as pg
 import threading
 import time
+import math
 from moviepy.decorators import convert_masks_to_RGB, requires_duration
 from moviepy.video.io.preview import imdisplay
+from moviepy.editor import VideoClip, clips_array
+
+from constants import DISPLAY_SIZE
 
 NUMBER_KEYS = [  # pg.key_code(str(k)) for k in range(1, 10)]
-    # X = [
     pg.K_1,
     pg.K_2,
     pg.K_3,
@@ -17,6 +20,41 @@ NUMBER_KEYS = [  # pg.key_code(str(k)) for k in range(1, 10)]
     pg.K_8,
     pg.K_9,
 ]
+
+
+def preview_all(out_clips: [VideoClip], display_size=DISPLAY_SIZE, fps=15
+                ) -> int:
+    square_size = math.ceil(math.sqrt(len(out_clips)))
+    segments = [
+        [
+            out_clips[i + j].resize(1 / square_size)
+            for j in range(square_size)
+            if i + j < len(out_clips)
+        ] for i in range(0, len(out_clips), square_size)
+    ]
+    square = clips_array(segments).resize(display_size).without_audio()
+    pg.display.set_caption("Choose which version to use")
+    chosen = None
+    while None == chosen:
+        # Preview all versions
+        result = preview(square, fps=fps)
+        # Check which version was chosen
+        if result == None:
+            pg.quit()
+            raise InterruptedError("Switching to single version")
+        elif type(result) == int:
+            chosen = result - 1
+        else:
+            x = math.floor(result[0] / display_size[0] * square_size)
+            y = math.floor(result[1] / display_size[1] * square_size)
+            chosen = y * square_size + x
+        if chosen < 0 or chosen >= len(out_clips):
+            print("Clip #{} not a valid clip in [1, {}]".format(
+                1 + chosen, len(out_clips)
+            ))
+            chosen = None
+    return chosen
+
 
 @ requires_duration
 @ convert_masks_to_RGB

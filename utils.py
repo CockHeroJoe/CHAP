@@ -13,20 +13,6 @@ class SourceFile:
         self.clip = clip
 
 
-class OutputConfig:
-    def __init__(self, args):
-        self.assemble = args.assemble
-        self.fps = args.fps
-        self.xdim = args.xdim
-        self.ydim = args.ydim
-        self.versions = args.versions
-        self.cache = args.cache
-        self.delete = args.delete
-        if self.delete and not self.assemble:
-            print("Cannot delete intermediate files, if not assembling video")
-            self.delete = False
-
-
 def get_black_clip(dims: (int, int), duration=2 * FADE_DURATION):
     return ColorClip(dims, (0, 0, 0), duration=duration)
 

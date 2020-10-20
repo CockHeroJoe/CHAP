@@ -1,5 +1,47 @@
 from moviepy.editor import CompositeVideoClip, ImageClip, TextClip
 
+
+class AudioCredit:
+    def __init__(self, config: dict):
+        self.artist = config.get("artist", None)
+        self.song = config.get("song", None)
+
+    def __str__(self):
+        fields = [
+            f for f in [
+                self.artist,
+                self.song,
+            ] if f is not None
+        ]
+        return ("{}\n" * len(fields)).format(*fields)
+
+
+class VideoCredit:
+    def __init__(self, config: dict):
+        self.studio = config.get("studio", None)
+        self.title = config.get("title", None)
+        self.date = config.get("date", None)
+        self.performers = config.get("performers", None)
+
+    def __str__(self):
+        fields = [
+            f for f in [
+                self.studio,
+                self.date,
+                self.title,
+                *self.performers
+            ] if f is not None
+        ]
+        return ("{}\n" * (len(fields))).format(*fields)
+
+
+class RoundCredits:
+    def __init__(self, config: dict):
+        self.audio = [AudioCredit(c) for c in config.get("audio", [])]
+        self.video = [VideoCredit(c) for c in config.get("video", [])]
+
+
+
 def make_credits(credits_data, width, color='white', stroke_color='black',
                  stroke_width=2, font='Impact-Normal', fontsize=60, gap=0):
     """

@@ -1,14 +1,12 @@
-import math
 import random
 import pygame as pg
 
-from moviepy.editor import clips_array, VideoFileClip
+from moviepy.editor import VideoFileClip
 
 from constants import *
 from utils import draw_progress_bar
-from utils import OutputConfig
-from round_parsing import RoundConfig
-from preview import preview
+from parsing import RoundConfig, OutputConfig
+from preview import preview, preview_all
 
 def interleave(
         output_config: OutputConfig,
@@ -72,39 +70,12 @@ def interleave(
 
         # Select from versions using GUI editor
         if versions > 1:
-            square_size = math.ceil(math.sqrt(versions))
-            segments = [
-                [
-                    out_clips[i + j].resize(1 / square_size)
-                    for j in range(square_size)
-                    if i + j < len(out_clips)
-                ] for i in range(0, len(out_clips), square_size)
-            ]
-            square = clips_array(segments).resize(DISPLAY_SIZE).without_audio()
-            pg.display.set_caption("Choose which version to use")
-            chosen = None
-            while None == chosen:
-                # Preview all versions
-                result = preview(square, fps=output_config.fps / 10)
-
-                # Check which version was chosen
-                if result == None:
-                    print("\rSwitching to single version for this round")
-                    versions = 1
-                    chosen = 0
-                    pg.quit()
-                    break
-                elif type(result) == int:
-                    chosen = result - 1
-                else:
-                    x = math.floor(result[0] / DISPLAY_SIZE[0] * square_size)
-                    y = math.floor(result[1] / DISPLAY_SIZE[1] * square_size)
-                    chosen = y * square_size + x
-                if chosen < 0 or chosen >= len(out_clips):
-                    print("Clip #{} not a valid clip in [1, {}]".format(
-                        1 + chosen, len(out_clips)
-                    ))
-                    chosen = None
+            try:
+                chosen = preview_all(out_clips)
+            except InterruptedError as err:
+                print("\r{}".format(err))
+                versions = 1
+                chosen = 0
             clips.append(out_clips[chosen])
         else:
             clips.append(out_clip)

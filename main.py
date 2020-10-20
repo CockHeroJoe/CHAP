@@ -3,8 +3,8 @@
 import os
 import random
 import fnmatch
+
 from contextlib import ExitStack
-from string import ascii_letters
 from moviepy.editor import concatenate_videoclips,\
     AudioFileClip,\
     ColorClip,\
@@ -16,50 +16,27 @@ from moviepy.editor import concatenate_videoclips,\
     VideoClip,\
     VideoFileClip
 
-from round_parsing import RoundConfig, parse_rounds
-from constants import *
+from constants import TRANSITION_DURATION, CREDIT_DISPLAY_TIME
 from interleave import interleave
 from credit import make_credits
-from utils import *
+from utils import SourceFile,\
+    get_black_clip,\
+    get_round_name,\
+    make_text_screen,\
+    make_background,\
+    crossfade
+from parsing import OutputConfig,\
+    RoundConfig,\
+    parse_rounds,\
+    parse_command_line_args
 
 
 def main():
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-x", "--xdim", help="output width (x pixels)", type=int, default=1920)
-    parser.add_argument(
-        "-y", "--ydim", help="output height (y pixels)", type=int, default=1080)
-    parser.add_argument(
-        "-f", "--fps", help="output frames per second", type=int, default=30)
-    parser.add_argument(
-        "-o", "--output", help="output base file name and title of video",
-        default="Random {}".format("".join([
-            random.choice(ascii_letters)
-            for _ in range(4)
-        ])))
-    parser.add_argument(
-        "-v", "--versions", help="number of versions", type=int, default=1)
-    parser.add_argument(
-        "-r", "--raw", help="save output losslessly", type=bool, default=False)
-    parser.add_argument("-a", "--assemble", action="store_true",
-                        help="combine rounds, add title and credits",
-                        default=False)
-    parser.add_argument("-c", "--cache", # TODO: add "clip" choice
-                        help="memory usage before dumping to disk",
-                        choices=["round", "all"], default="round")
-    parser.add_argument("-d", "--delete", action="store_true",
-                        help="delete intermediate files after assembly",
-                        default=False)
-    parser.add_argument(
-        "rounds", metavar="rnd.yaml", nargs="+", help="round config files")
-    args = parser.parse_args()
-
+    args = parse_command_line_args()
     output_config = OutputConfig(args)
-    ext = "avi" if args.raw else "mp4"
-    codec = "png" if args.raw else None
-    output_name = args.output
+    ext = "avi" if output_config.raw else "mp4"
+    codec = "png" if output_config.raw else None
+    output_name = output_config.output
 
     round_configs = parse_rounds(args.rounds)
     for round_config in round_configs:
@@ -71,8 +48,7 @@ def main():
     # shuffle clips for each round and attach beatmeter
     with ExitStack() as stack:
         round_videos = []
-        for r_i in range(len(round_configs)):
-            round_config = round_configs[r_i]
+        for r_i, round_config in enumerate(round_configs):
 
             if round_config.is_on_disk:
                 continue
@@ -97,11 +73,15 @@ def main():
             if round_config.music is not None or round_config.beats is not None:
                 audio = [
                     stack.enter_context(AudioFileClip(clip))
-                    for clip in [round_config.beats, round_config.music]
+                    for clip in [
+                        round_config.beats,
+                        round_config.music,
+                    ]
                     if clip is not None
                 ]
 
             # TODO: get duration, bpm from music track; generate beats & meter
+            # TODO: OR use sklave Beatmeter Generator's json
 
             # Generate interleaved clips from sources
             print("loading sources for round #{}...".format(r_i + 1))
@@ -111,11 +91,18 @@ def main():
             shuffled_clips = interleave(output_config, round_config, sources)
 
             # Concatenate this round's video clips together and add beatmeter
-            round_i = concatenate_videoclips(shuffled_clips).without_audio()
+            round_i = concatenate_videoclips(shuffled_clips)
             if beatmeter is not None:
                 round_i = CompositeVideoClip([round_i, beatmeter])
             if audio is not None:
-                round_i = round_i.set_audio(CompositeAudioClip(audio))
+                beat_audio = CompositeAudioClip(audio)
+                level = round_config.audio_level
+                if level > 1:
+                    beat_audio.volumex(1 / level)
+                else:
+                    round_i.volumex(level)
+                audio = CompositeAudioClip([beat_audio, round_i.audio])
+                round_i = round_i.set_audio(audio)
             round_i = round_i.set_duration(round_config.duration)
 
             if output_config.cache == "round":
@@ -137,19 +124,18 @@ def main():
 
             # Add round transitons
             dims = (output_config.xdim, output_config.ydim)
-
-            # TODO: test background
             round_transitions = [
                 make_text_screen(dims,
                                  "Round {}".format(r_i + 1) +
-                                 ("\n" + round_configs[r_i].name
-                                  if round_configs[r_i].name is not None
+                                 ("\n" + round_config.name
+                                  if round_config.name is not None
                                   else ""),
                                  TRANSITION_DURATION,
                                  make_background(stack,
-                                                 round_configs[r_i].background,
-                                                 dims)
-                                 ) for r_i in range(len(rounds))
+                                                 round_config.background,
+                                                 dims)  # TODO: test background
+                                 )
+                for r_i, round_config in enumerate(round_configs)
             ]
             all_video = [None]*(3 * len(rounds))
             all_video[::3] = [get_black_clip(dims) for _ in range(len(rounds))]
