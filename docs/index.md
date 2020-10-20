@@ -58,7 +58,11 @@ Individual rounds are output by default
 - Assemble video from all rounds in folder "/path/to/rounds/"
     ```
     CHAP/main.py -ao <YOUR_PROJECT_NAME> /path/to/rounds/round*.yaml
-    ```   
+    ```
+- Provide options and poitional arguments with settings file instead
+    ```
+    CHAP/main.py -s /path/to/settings.yaml
+    ```  
 
 ### Options
 
