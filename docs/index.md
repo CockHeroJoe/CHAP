@@ -14,7 +14,7 @@ The process to create a video is:
     and organise one song per folder.
 - For each song, manually create beat tracks and generate sound and images with the Beatmeter Generator 
     (organizing these outputs is why you want separate folders for each song).
-- Create round config files for each round from the [template](template.yaml) ([more info](#round-config-files)).
+- Create round config files for each round from the [example](rooster_round01.yaml) ([more info](#round-config-files)).
 - Run the Cock Hero Assembly Program with the round config filenames as arguments ([more info](#usage)).
 - If mutltiple versions are generated for each clip (`--versions` is more than 1), select your prefered version 
         for each clip, using the GUI that pops up. **Note**: 4K inputs are *very* slow to preview.
@@ -24,6 +24,8 @@ The process to create a video is:
 This is a work-in-progress. If you find a bug or would like a new feature, please see the [contributing section](#contributing).
 
 ## Example Output
+
+Generated with `./main.py -s docs/rooster.yaml` 
 
 !["Rooster Hero"](rooster-hero.gif)
 
@@ -59,6 +61,10 @@ Individual rounds are output by default
     ```   
 
 ### Options
+
+Any option that can be passed in through the command line can be passed in through the 
+`--settings` option instead.
+
 - `-x` or `--xdim`: The output width (in pixels) of generated video, default 1920
 - `-y` or `--ydim`: The output height (in pixels) of generated video, default 1080
 - `-f` or `--fps`: The output framerate (in frames per second) of generated video, default 30
@@ -83,7 +89,7 @@ pip3 install -r CHAP/requirements.txt
 
 ## Round Config Files
 
-Each round is described by a `yaml` file. See the [template](template.yaml) for an example.
+Each round is described by a `yaml` file. See the [example](rooster_round01.yaml) for an example.
 
 ### Required Fields
 - `duration`: The duration in seconds of the round (should match song length)

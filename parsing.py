@@ -16,6 +16,7 @@ class OutputConfig:
         else:
             file_contents = dict()
 
+        self.rounds = file_contents.get("rounds", args.rounds)
         self.output = file_contents.get("output", args.output)
         self.assemble = file_contents.get("assemble", args.assemble)
         self.fps = file_contents.get("fps", args.fps)
@@ -126,5 +127,5 @@ def parse_command_line_args() -> dict:
                         help="override and provide command-line options",
                         default=None)
     parser.add_argument(
-        "rounds", metavar="rnd.yaml", nargs="+", help="round config files")
+        "rounds", metavar="rnd.yaml", nargs="*", help="round config files")
     return parser.parse_args()

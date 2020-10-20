@@ -32,24 +32,28 @@ from parsing import OutputConfig,\
 
 
 def main():
-    args = parse_command_line_args()
-    output_config = OutputConfig(args)
+    output_config = OutputConfig(parse_command_line_args())
     ext = "avi" if output_config.raw else "mp4"
     codec = "png" if output_config.raw else None
     output_name = output_config.output
 
-    round_configs = parse_rounds(args.rounds)
+    if output_config.rounds == []:
+        print("ERROR: No round configs provided")
+        exit(1)
+
+    round_configs = parse_rounds(output_config.rounds)
     for round_config in round_configs:
         name = get_round_name(output_name, round_config.filename, ext)
         if os.path.isfile(name):
             round_config.is_on_disk = True
-            print("Reloaded round {} from disk.".format(name))
+            print("Reloaded round {} from disk".format(name))
 
     # shuffle clips for each round and attach beatmeter
     with ExitStack() as stack:
         round_videos = []
         for r_i, round_config in enumerate(round_configs):
-
+            
+            # Skip rounds that have been saved
             if round_config.is_on_disk:
                 continue
 
