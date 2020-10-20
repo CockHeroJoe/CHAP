@@ -22,6 +22,9 @@ class OutputConfig:
         self.versions = args.versions
         self.cache = args.cache
         self.delete = args.delete
+        if self.delete and not self.assemble:
+            print("Cannot delete intermediate files, if not assembling video")
+            self.delete = False
 
 
 def get_black_clip(dims: (int, int), duration=2 * FADE_DURATION):
