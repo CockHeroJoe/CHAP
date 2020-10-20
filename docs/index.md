@@ -65,10 +65,13 @@ Individual rounds are output by default
 - `-o` or `--output`: The output basename for generated video(s), default "Random XXXX"
 - `-v` or `--versions`: The number of [versions](#versions) of each clip, default 1 (not displayed)
 - `-r` or `--raw`: Output videos in as raw (uncompressed) `.avi` files with `png` codec
+- `-a` or `--assemble`: Assemble generated rounds into full video (with title, transitions, 
+    credit roll), default False
 - `-c` or `--cache`: How often to save output videos:
     - default: "round" degrades quality slightly, but crashes only lose 1 round at most 
         (see  [recovery](#recovery))
     - option: "all" uses tonnes of memory (many gigs per round) and will crash on big projects
+- `-d` or `--delete`: Delete intermediate files after assembly (if on), default False
 
 ## Install
 ```
@@ -115,9 +118,8 @@ This command-line option allows you to customize the random clips that are chose
 - The clips will be previewed in the GUI, on repeat until one is chosen.
 - Choose which version/clip is included by clicking on it or using the number keys 
     <kbd>1</kbd> - <kbd>9</kbd> corresponding to the position from top left:
-    | | |
-    |-|-|
     |1|2|
+    |-|-|
     |3|4|
 - If preview window is exited or <kbd>Esc</kbd> is hit, the rest of the round's clips
     will be selected without user input (no more GUI / one version).

@@ -21,6 +21,7 @@ class OutputConfig:
         self.ydim = args.ydim
         self.versions = args.versions
         self.cache = args.cache
+        self.delete = args.delete
 
 
 def get_black_clip(dims: (int, int), duration=2 * FADE_DURATION):

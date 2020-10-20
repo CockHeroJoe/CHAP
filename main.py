@@ -46,13 +46,16 @@ def main():
     parser.add_argument("-a", "--assemble", action="store_true",
                         help="combine rounds, add title and credits",
                         default=False)
-    parser.add_argument(
-        "-c", "--cache", help="memory usage before dumping to disk",
-        choices=["round", "all"], default="round")  # TODO: add clip
+    parser.add_argument("-c", "--cache", # TODO: add "clip" choice
+                        help="memory usage before dumping to disk",
+                        choices=["round", "all"], default="round")
+    parser.add_argument("-d", "--delete", action="store_true",
+                        help="delete intermediate files after assembly",
+                        default=False)
     parser.add_argument(
         "rounds", metavar="rnd.yaml", nargs="+", help="round config files")
     args = parser.parse_args()
-    
+
     output_config = OutputConfig(args)
     ext = "avi" if args.raw else "mp4"
     codec = "png" if args.raw else None
@@ -182,10 +185,11 @@ def main():
             output.write_videofile(name, codec=codec, fps=output_config.fps)
 
             # Delete intermediate files
-            for round_config in round_configs:
-                if round_config.is_on_disk:
-                    os.remove(get_round_name(
-                        output_name, round_config.filename, ext))
+            if output_config.delete:
+                for round_config in round_configs:
+                    if round_config.is_on_disk:
+                        os.remove(get_round_name(
+                            output_name, round_config.filename, ext))
 
 
 if __name__ == "__main__":
