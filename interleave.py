@@ -3,7 +3,6 @@ import pygame as pg
 
 from moviepy.editor import VideoFileClip
 
-from constants import *
 from utils import draw_progress_bar
 from parsing import RoundConfig, OutputConfig
 from preview import preview, preview_all
