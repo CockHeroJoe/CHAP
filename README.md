@@ -14,7 +14,7 @@ The process to create a video is:
     and organise one song per folder.
 - For each song, manually create beat tracks and generate sound and images with the Beatmeter Generator 
     (organizing these outputs is why you want separate folders for each song).
-- Create round config files for each round from the [example](rooster_round01.yaml) ([more info](#round-config-files)).
+- Create round config files for each round from the [example](docs/rooster_round01.yaml) ([more info](#round-config-files)).
 - Run the Cock Hero Assembly Program with the round config filenames as arguments ([more info](#usage)).
 - If mutltiple versions are generated for each clip (`--versions` is more than 1), select your prefered version 
         for each clip, using the GUI that pops up. **Note**: 4K inputs are *very* slow to preview.
@@ -35,7 +35,8 @@ Free Stock footage of roosters from [Videezy](http://www.videezy.com)
 
 The `main` program takes 1 or more [Round Config Files](#round-config-files) as the positional arguments.
 
-Individual rounds are output by default
+Individual rounds are output by default, but are assembled into a complete video with a title screen,
+round transitions and credits, if the `--assemble` (AKA `-a`) option is used.
 
 ### Example Invocations
 
@@ -67,7 +68,7 @@ Individual rounds are output by default
 ### Options
 
 Any option that can be passed in through the command line can be passed in through the 
-`--settings` option instead.
+`--settings` option (as the path to a `.yaml` text file) instead. See [example](docs/rooster.yaml).
 
 - `-x` or `--xdim`: The output width (in pixels) of generated video, default 1920
 - `-y` or `--ydim`: The output height (in pixels) of generated video, default 1080
@@ -79,9 +80,11 @@ Any option that can be passed in through the command line can be passed in throu
     credit roll), default False
 - `-c` or `--cache`: How often to save output videos:
     - default: "round" degrades quality slightly, but crashes only lose 1 round at most 
-        (see  [recovery](#recovery))
+        (see  [recovery](#recovery)). Use with `--raw` to avoid quality degradation, if you have 
+        enough disk space
     - option: "all" uses tonnes of memory (many gigs per round) and will crash on big projects
 - `-d` or `--delete`: Delete intermediate files after assembly (if on), default False
+- `-s` of `--settings`: Overrides all command-line options by supplying them in a text file
 
 ## Install
 
@@ -96,7 +99,7 @@ Any option that can be passed in through the command line can be passed in throu
 
 ## Round Config Files
 
-Each round is described by a `yaml` file. See the [example](rooster_round01.yaml) for an example.
+Each round is described by a `yaml` file. See the [example](docs/rooster_round01.yaml) for an example.
 
 ### Required Fields
 - `duration`: The duration in seconds of the round (should match song length)
@@ -132,9 +135,9 @@ This command-line option allows you to customize the random clips that are chose
 - The clips will be previewed in the GUI, on repeat until one is chosen.
 - Choose which version/clip is included by clicking on it or using the number keys 
     <kbd>1</kbd> - <kbd>9</kbd> corresponding to the position from top left:
-    |1|2|
+    |**1**|**2**|
     |-|-|
-    |3|4|
+    |**3**|**4**|
 - If preview window is exited or <kbd>Esc</kbd> is hit, the rest of the clips
     will be selected without user input (no more GUI / one version).
 - The final output video will include only the clips selected.

@@ -35,7 +35,8 @@ Free Stock footage of roosters from [Videezy](http://www.videezy.com)
 
 The `main` program takes 1 or more [Round Config Files](#round-config-files) as the positional arguments.
 
-Individual rounds are output by default
+Individual rounds are output by default, but are assembled into a complete video with a title screen,
+round transitions and credits, if the `--assemble` (AKA `-a`) option is used.
 
 ### Example Invocations
 
@@ -67,7 +68,7 @@ Individual rounds are output by default
 ### Options
 
 Any option that can be passed in through the command line can be passed in through the 
-`--settings` option instead.
+`--settings` option (as the path to a `.yaml` text file) instead. See [example](rooster.yaml).
 
 - `-x` or `--xdim`: The output width (in pixels) of generated video, default 1920
 - `-y` or `--ydim`: The output height (in pixels) of generated video, default 1080
@@ -79,9 +80,11 @@ Any option that can be passed in through the command line can be passed in throu
     credit roll), default False
 - `-c` or `--cache`: How often to save output videos:
     - default: "round" degrades quality slightly, but crashes only lose 1 round at most 
-        (see  [recovery](#recovery))
+        (see  [recovery](#recovery)). Use with `--raw` to avoid quality degradation, if you have 
+        enough disk space
     - option: "all" uses tonnes of memory (many gigs per round) and will crash on big projects
 - `-d` or `--delete`: Delete intermediate files after assembly (if on), default False
+- `-s` of `--settings`: Overrides all command-line options by supplying them in a text file
 
 ## Install
 
