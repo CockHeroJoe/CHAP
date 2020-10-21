@@ -52,7 +52,7 @@ def main():
     with ExitStack() as stack:
         round_videos = []
         for r_i, round_config in enumerate(round_configs):
-            
+
             # Skip rounds that have been saved
             if round_config.is_on_disk:
                 continue
@@ -137,7 +137,8 @@ def main():
                                  TRANSITION_DURATION,
                                  make_background(stack,
                                                  round_config.background,
-                                                 dims)  # TODO: test background
+                                                 dims,
+                                                 TRANSITION_DURATION)
                                  )
                 for r_i, round_config in enumerate(round_configs)
             ]
@@ -148,6 +149,11 @@ def main():
 
             # Add title
             title_text = "Cock Hero\n"
+            # TODO: add output_config.title_duration
+            #       and add output_config.title_background
+            #       and round_config.transition_duration
+            #       and modify background => round_config.transition_background
+            # TODO: test backgrounds, add help in README
             title = make_text_screen(dims, title_text, TRANSITION_DURATION)
             title_text += output_name
             title2 = make_text_screen(dims, title_text, TRANSITION_DURATION)
