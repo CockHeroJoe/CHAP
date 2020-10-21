@@ -24,7 +24,7 @@ def get_round_name(basename: str, rname: str, ext: str):
 def make_text_screen(
         dimensions: (int, int),
         text: str,
-        duration: float,
+        duration: float = TRANSITION_DURATION,
         background: VideoClip = None,
         font=70,
         color="white"):
