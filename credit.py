@@ -32,14 +32,13 @@ class VideoCredit:
                 *self.performers
             ] if f is not None
         ]
-        return ("{}\n" * (len(fields))).format(*fields)
+        return ("{}\n" * len(fields)).format(*fields)
 
 
 class RoundCredits:
     def __init__(self, config: dict):
         self.audio = [AudioCredit(c) for c in config.get("audio", [])]
         self.video = [VideoCredit(c) for c in config.get("video", [])]
-
 
 
 def make_credits(credits_data, width, color='white', stroke_color='black',
