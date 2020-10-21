@@ -84,12 +84,15 @@ Any option that can be passed in through the command line can be passed in throu
 - `-d` or `--delete`: Delete intermediate files after assembly (if on), default False
 
 ## Install
-```
-git clone https://github.com/CockHeroJoe/CHAP
-pip3 install -r CHAP/requirements.txt
-```
-- ImageMagic config
-- Pygame
+
+- Install Python 3
+- Install [pygame](https://www.pygame.org/wiki/GettingStarted)
+- Download CHAP source code and install it
+    ```
+    git clone https://github.com/CockHeroJoe/CHAP
+    pip3 install -r CHAP/requirements.txt
+    ```
+- Configure ImageMagic to [allow for larger images](https://stackoverflow.com/questions/52075013/increasing-imagicks-max-resolution)
 
 ## Round Config Files
 

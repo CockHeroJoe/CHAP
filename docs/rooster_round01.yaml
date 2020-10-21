@@ -8,8 +8,8 @@ bpm: 93 # Beats Per Minute of song
 audio_level: 0.1 # Listen to roosters at 10%, music and beats at 100%
 duration: 12 # Length of round (should be length of song)
 sources:
-  - /mnt/d/Downloads/A_barnyard_with_chickens.mp4  
-  - /mnt/d/Downloads/rooster.mp4
+  - /mnt/d/Downloads/RoosterHero/01/A_barnyard_with_chickens.mp4  
+  - /mnt/d/Downloads/RoosterHero/01/rooster.mp4
 credits:
   audio:
     - artist: Scott Joplin # Probably not the best song,
