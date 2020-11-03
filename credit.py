@@ -2,7 +2,10 @@ from moviepy.editor import CompositeVideoClip, ImageClip, TextClip
 
 
 class AudioCredit:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict={}):
+        if type(config) != dict:
+            config = config.__dict__
+
         self.artist = config.get("artist", None)
         self.song = config.get("song", None)
 
@@ -17,7 +20,10 @@ class AudioCredit:
 
 
 class VideoCredit:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict={}):
+        if type(config) != dict:
+            config = config.__dict__
+
         self.studio = config.get("studio", None)
         self.title = config.get("title", None)
         self.date = config.get("date", None)
@@ -36,7 +42,15 @@ class VideoCredit:
 
 
 class RoundCredits:
-    def __init__(self, config: dict):
+    def __init__(self, config: dict = None, _get=False):
+        if None is config:
+            config = {}
+        if type(config) != dict:
+            config = config.__dict__
+        
+        if _get:
+            config = _apply_to_leaves(config, "get")
+
         self.audio = [AudioCredit(c) for c in config.get("audio", [])]
         self.video = [VideoCredit(c) for c in config.get("video", [])]
 
@@ -133,3 +147,14 @@ def make_credits(credits_data, width, color='white', stroke_color='black',
     amask = ImageClip(scaled.mask.get_frame(0), ismask=True)
 
     return imclip.set_mask(amask)
+
+
+def _apply_to_leaves(tree, method) -> dict:
+    def _a2l(t):
+        if type(t) is list:
+            return [_a2l(e) for e in t]
+        elif type(t) is dict:
+            return {k: _a2l(v) for k, v in t.items()}
+        else:
+            return getattr(t, method)()
+    return _a2l(tree)

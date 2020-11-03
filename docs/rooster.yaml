@@ -1,7 +1,34 @@
-output: Rooster Hero
+name: Rooster Hero
 assemble: True
 xdim: 1280
 ydim: 720
 cache: all
-rounds:
-  - docs/rooster_round01.yaml
+rounds: # Comments like this can be removed or left in
+  - # This hyphen inidcates the start of the first round
+    name: Domesticated Cocks # Displayed during round transitions
+    speed: 5
+    music: /mnt/d/Downloads/RoosterHero/01/The.Entertainer.wav
+    beats: /mnt/d/Downloads/RoosterHero/01/beat_track.wav
+    beatmeter: /mnt/d/Downloads/RoosterHero/01/beats_folder/
+    bpm: 93 # Beats Per Minute of song
+    audio_level: 0.1 # Listen to roosters at 10%, music and beats at 100%
+    duration: 12 # Length of round (should be length of song) in seconds
+    sources:
+      - /mnt/d/Downloads/RoosterHero/01/A_barnyard_with_chickens.mp4  
+      - /mnt/d/Downloads/RoosterHero/01/rooster.mp4
+    credits:
+      audio:
+        - artist: Scott Joplin # Probably not the best song,
+          song: The Entertainer # but it's in the public domain :D
+      video:
+        - studio: Videezy
+          title: A Barnyard With Chickens
+          date: 2019.10.19
+          performers:
+            - Father Rooster
+            - Rooster Wife
+        - studio: Videezy
+          title: Rooster Walking Around
+          date: 2019.10.19
+          performers:
+            - The Blackest Cock
