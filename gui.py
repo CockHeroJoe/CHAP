@@ -1,6 +1,7 @@
 import tkinter as tk
 import tkinter.ttk as ttk
 from ttkthemes import ThemedTk
+from tkinter import filedialog
 from functools import partial
 
 from parsing import OutputConfig, RoundConfig
@@ -410,7 +411,7 @@ class GUI(AbstractGUI):
         self.config.save()
 
     def save_as(self):
-        path = tk.filedialog.asksaveasfilename(
+        path = filedialog.asksaveasfilename(
             initialdir=START_DIR,
             title="Save As",
             filetypes=[("YAML files", "*.yaml")]
@@ -481,13 +482,13 @@ class RoundGUI(AbstractGUI):
 
 def _get_path(exts, root, start=START_DIR):
     if exts == []:
-        path = tk.filedialog.askdirectory(
+        path = filedialog.askdirectory(
             initialdir=start,
             title="Select a directory",
             parent=root
         )
     else:
-        path = tk.filedialog.askopenfilename(
+        path = filedialog.askopenfilename(
             initialdir=start,
             title="Select a file",
             filetypes=exts,
