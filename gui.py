@@ -17,6 +17,8 @@ class AbstractGUI():
         self.config = config.copy()
         self.tabs = ttk.Notebook(self.window)
 
+        self.window.geometry("800x600")
+
         def _update_config(new_config):
             config.__dict__.update(new_config)
             self.config = config.copy()
@@ -24,8 +26,11 @@ class AbstractGUI():
         self.update_config = update or _update_config
 
     def _generate_gui_elements(self):
-        frames = [ttk.Frame(self.tabs), ttk.Frame(
-            self.tabs), ttk.Frame(self.tabs)]
+        frames = [
+            ttk.Frame(self.tabs),
+            ScrollableFrame(self.tabs),
+            ScrollableFrame(self.tabs)
+        ]
         i = 0
         for attribute in self.config.ITEMS:
             value = self.config.__getattribute__(attribute)
@@ -33,11 +38,12 @@ class AbstractGUI():
                 continue
             element = self._generate_gui_element(
                 frames, attribute, value, i)
-            self.components[attribute] = element
+            if attribute not in ["rounds", "credits", "sources"]:
+                self.components[attribute] = element
             i += len(element) + 2 if type(element) == list else 1
 
-        for frame in frames:
-            frame.columnconfigure(1, weight=1)
+        
+        frames[0].columnconfigure(1, weight=1)
 
         return frames
 
@@ -55,172 +61,11 @@ class AbstractGUI():
         validation = self.config.ITEMS[attribute]
         box = None
         if attribute == "rounds":
-            sub_frame = ttk.Frame(frame)
-            value_list = []
-            for v_i, v in enumerate(value):
-                label = ttk.Label(sub_frame, text="{:02d}: ".format(v_i + 1))
-                variable = tk.StringVar(sub_frame)
-                variable.set(v.name)
-                box = ttk.Button(
-                    sub_frame, command=lambda: RoundGUI(
-                        self.window, v, lambda n: variable.set(n)),
-                    text="Edit")
-                label.grid(row=v_i, column=0)
-                label2 = ttk.Label(sub_frame, textvariable=variable)
-                label2.grid(row=v_i, column=1)
-                box.grid(row=v_i, column=2)
-                value_list += [v.__dict__]
-                box2 = ttk.Button(
-                    sub_frame,
-                    command=partial(self.remove_round, v_i),
-                    text="Remove")
-                box2.grid(row=v_i, column=3)
-
-            v_i = len(value_list)
-            label = ttk.Label(
-                sub_frame, text="{:02d}: ".format(len(value) + 1))
-            label.grid(row=v_i, column=0)
-            box = ttk.Button(sub_frame,
-                             command=self.add_round,
-                             text="Add")
-            box.grid(row=v_i, column=1)
-            sub_frame.grid(columnspan=4, rowspan=v_i+1, sticky="ew")
-            return value_list
+            return RoundsTab(self, frame).draw()
         elif attribute == "sources":
-            sub_frame = ttk.Frame(frame)
-            value_list = []
-            for v_i, v in enumerate(value):
-                label = ttk.Label(sub_frame, text="{:02d}: ".format(v_i + 1))
-                variable = tk.StringVar(sub_frame)
-                variable.set(v)
-                box = ttk.Button(sub_frame,
-                                 command=partial(self.replace_source, v_i),
-                                 text="Replace")
-                label.grid(row=v_i, column=0)
-                label2 = ttk.Label(sub_frame, textvariable=variable)
-                label2.grid(row=v_i, column=1)
-                box.grid(row=v_i, column=2)
-                value_list += [variable]
-                box2 = ttk.Button(
-                    sub_frame,
-                    command=partial(self.remove_source, v_i),
-                    text="Remove")
-                box2.grid(row=v_i, column=3)
-
-            v_i = len(value_list)
-            label = ttk.Label(
-                sub_frame, text="{:02d}: ".format(len(value) + 1))
-            label.grid(row=v_i, column=0)
-            variable = tk.StringVar(sub_frame)
-            box = ttk.Button(sub_frame,
-                             command=self.add_source,
-                             text="Add")
-            box.grid(row=v_i, column=1)
-            sub_frame.grid(columnspan=4, rowspan=v_i+1, sticky="ew")
-            return value_list
+            return SourcesTab(self, frame).draw()
         elif attribute == "credits":
-            value_dict = {"audio": [], "video": []}
-
-            label = ttk.Label(frame, text="Audio Credits",
-                              font="Roboto 14 bold")
-            label.grid(columnspan=5)
-
-            audio_frame = ttk.Frame(frame)
-            for v_i, v in enumerate(value.audio):
-                label = ttk.Label(audio_frame, text="{:02d}:".format(v_i+1))
-                label.grid(row=2*v_i, column=0)
-
-                artist_variable = tk.StringVar(audio_frame)
-                artist_variable.set(v.artist)
-                label2 = ttk.Label(audio_frame, text="Artist")
-                label2.grid(row=2*v_i, column=1)
-                box = ttk.Entry(audio_frame, textvariable=artist_variable)
-                box.grid(row=2*v_i, column=2)
-
-                song_variable = tk.StringVar(audio_frame)
-                song_variable.set(v.song)
-                label3 = ttk.Label(audio_frame, text="Song")
-                label3.grid(row=2*v_i+1, column=1)
-                box2 = ttk.Entry(audio_frame, textvariable=song_variable)
-                box2.grid(row=2*v_i+1, column=2)
-
-                value_dict["audio"] += [{"artist": artist_variable,
-                                         "song": song_variable}]
-                box3 = ttk.Button(
-                    audio_frame,
-                    command=partial(self.remove_audio_credit, v_i),
-                    text="Remove")
-                box3.grid(row=2*v_i, column=3)
-
-            length = len(value_dict["audio"])
-            label = ttk.Label(audio_frame,
-                              text="{:02d}:".format(length+1))
-            label.grid(row=2*length, column=0)
-            box = ttk.Button(
-                audio_frame, command=self.add_audio_credit, text="Add")
-            box.grid(row=2*length, column=1)
-            audio_frame.grid(sticky='ew', rowspan=2*length+1)
-
-            label = ttk.Label(frame, text="Video Credits",
-                              font="Roboto 14 bold")
-            label.grid(columnspan=5)
-            video_frame = ttk.Frame(frame)
-            for v_i, v in enumerate(value.video):
-                label = ttk.Label(video_frame,
-                                  text="{:02d}:".format(v_i+1))
-                label.grid(row=4*v_i, column=0)
-
-                studio_variable = tk.StringVar(video_frame)
-                studio_variable.set(v.studio)
-                label2 = ttk.Label(video_frame, text="Studio")
-                label2.grid(row=4*v_i, column=1)
-                box = ttk.Entry(video_frame, textvariable=studio_variable)
-                box.grid(row=4*v_i, column=2)
-
-                title_variable = tk.StringVar(video_frame)
-                title_variable.set(v.title)
-                label3 = ttk.Label(video_frame, text="Title")
-                label3.grid(row=4*v_i+1, column=1)
-                box2 = ttk.Entry(video_frame, textvariable=title_variable)
-                box2.grid(row=4*v_i+1, column=2)
-
-                date_variable = tk.StringVar(video_frame)
-                date_variable.set(v.date)
-                label4 = ttk.Label(video_frame, text="Date")
-                label4.grid(row=4*v_i+2, column=1)
-                box3 = ttk.Entry(video_frame, textvariable=date_variable)
-                box3.grid(row=4*v_i+2, column=2)
-
-                performer_variable = tk.StringVar(video_frame)
-                performer_variable.set(
-                    "" if v.performers is None else v.performers[0])
-                label5 = ttk.Label(video_frame, text="Performers")
-                label5.grid(row=4*v_i+3, column=1)
-                box4 = ttk.Entry(video_frame, textvariable=performer_variable)
-                box4.grid(row=4*v_i+3, column=2)
-
-                value_dict["video"] += [{
-                    "studio": studio_variable,
-                    "title": title_variable,
-                    "date": date_variable,
-                    "performers": [performer_variable],
-
-                }]
-                box5 = ttk.Button(
-                    video_frame,
-                    command=partial(self.remove_video_credit, v_i),
-                    text="Remove")
-                box5.grid(row=4*v_i, column=4)
-
-            length = len(value_dict["video"])
-            label = ttk.Label(video_frame, text="{:02d}:".format(length+1))
-            label.grid(row=4*length, column=0)
-            box = ttk.Button(
-                video_frame, command=self.add_video_credit, text="Add")
-            box.grid(row=4*length, column=1)
-            video_frame.grid(sticky='ew', rowspan=4*len(value_dict["video"])+1)
-
-            return value_dict
+            return CreditsTab(self, frame).draw()
         elif attribute == "name":
             variable = tk.StringVar(frame)
             variable.set(value)
@@ -280,48 +125,6 @@ class AbstractGUI():
                         )
                   )
             for k, v in self.components.items()}
-
-    def add_source(self):
-        path = _get_path(self.config.ITEMS["sources"]["exts"], self.window)
-        if path != START_DIR:
-            self.config.sources.append(path)
-            self.redraw()
-
-    def replace_source(self, index):
-        path = _get_path(self.config.ITEMS["sources"]["exts"], self.window)
-        if path != START_DIR:
-            self.config.sources[index] = path
-        self.components["sources"][index].set(path)
-
-    def remove_source(self, index):
-        self.config.sources.pop(index)
-        self.redraw()
-
-    def add_round(self):
-        def _new_round(config):
-            self.config.rounds.append(RoundConfig(config))
-            self.redraw()
-        RoundGUI(self.window, update=_new_round)
-
-    def remove_round(self, index):
-        self.config.rounds.pop(index)
-        self.redraw()
-
-    def add_audio_credit(self):
-        self.config.credits.__dict__["audio"].append(AudioCredit())
-        self.redraw()
-
-    def remove_audio_credit(self, index):
-        self.config.credits.audio.pop(index)
-        self.redraw()
-
-    def add_video_credit(self):
-        self.config.credits.__dict__["video"].append(VideoCredit())
-        self.redraw()
-
-    def remove_video_credit(self, index):
-        self.config.credits.video.pop(index)
-        self.redraw()
 
     def redraw(self):
         raise NotImplementedError(
@@ -500,3 +303,301 @@ def _get_path(exts, root, start=START_DIR):
 def _nf(s: str):
     """None Filter"""
     return None if s == "None" else s
+
+
+class ScrollableFrame(ttk.Frame):
+    # https://blog.tecladocode.com/tkinter-scrollable-frames/
+    def __init__(self, container, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(
+            self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(
+                scrollregion=canvas.bbox("all")
+            )
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+
+class AbstractTab:
+    def __init__(self, parent: AbstractGUI, frame: ScrollableFrame):
+        self.parent = parent
+        self.frame = frame.scrollable_frame
+        self.sub_frame = ttk.Frame(self.frame)
+        self.scrollbar = ttk.Scrollbar(self.frame)
+
+    def draw(self):
+        raise NotImplementedError(
+            "This is an abstract method and hasn't been overidden!")
+
+    def redraw(self):
+        self.sub_frame.destroy()
+        self.sub_frame = ttk.Frame(self.frame)
+        self.draw()
+        self.parent.window.update_idletasks()
+        self.parent.window.update()
+
+
+class RoundsTab(AbstractTab):
+    def draw(self):
+        value = self.parent.config.rounds
+        value_list = []
+        for v_i, v in enumerate(value):
+            label = ttk.Label(self.sub_frame, text="{:02d}: ".format(v_i + 1))
+            variable = tk.StringVar(self.sub_frame)
+            variable.set(v.name)
+            box = ttk.Button(
+                self.sub_frame, command=partial(self.edit_round, v, variable),
+                text="Edit")
+            label.grid(row=v_i, column=0, padx=10, pady=3)
+            label2 = ttk.Label(self.sub_frame, textvariable=variable)
+            label2.grid(row=v_i, column=1)
+            box.grid(row=v_i, column=2, padx=10, pady=3)
+            value_list += [v.__dict__]
+            box2 = ttk.Button(
+                self.sub_frame,
+                command=partial(self.remove_round, v_i),
+                text="Remove")
+            box2.grid(row=v_i, column=3)
+
+        v_i = len(value_list)
+        label = ttk.Label(
+            self.sub_frame, text="{:02d}: ".format(len(value) + 1))
+        label.grid(row=v_i, column=0, padx=10, pady=3)
+        box = ttk.Button(self.sub_frame,
+                         command=self.add_round,
+                         text="Add")
+        box.grid(row=v_i, column=1, padx=10, pady=3, sticky="w")
+        self.sub_frame.grid(columnspan=4, rowspan=v_i+1, sticky="ew")
+        self.parent.components["rounds"] = value_list
+
+    def edit_round(self, config, variable):
+        def _set_name(n: str): variable.set(n)
+        RoundGUI(self.parent.window, v, _set_name)
+
+    def add_round(self):
+        def _new_round(config):
+            self.parent.config.rounds.append(RoundConfig(config))
+            self.redraw()
+        RoundGUI(self.parent.window, update=_new_round)
+
+    def remove_round(self, index):
+        self.parent.config.rounds.pop(index)
+        self.redraw()
+
+
+class CreditsTab(AbstractTab):
+    def draw(self):
+        value = self.parent.config.credits
+        value_dict = {"audio": [], "video": []}
+        label = ttk.Label(self.sub_frame, text="Audio Credits",
+                          font="Roboto 14 bold")
+        label.grid(columnspan=5, pady=10)
+
+        audio_frame = ttk.Frame(self.sub_frame)
+        for v_i, v in enumerate(value.audio):
+            label = ttk.Label(audio_frame, text="{:02d}:".format(v_i+1))
+            label.grid(row=2*v_i, column=0, padx=10, pady=3)
+            
+            box3 = ttk.Button(
+                audio_frame,
+                command=partial(self.remove_audio_credit, v_i),
+                text="Remove")
+            box3.grid(row=2*v_i, column=4, sticky="e", padx=10, pady=3)
+
+            artist_variable = tk.StringVar(audio_frame)
+            artist_variable.set(v.artist)
+            label2 = ttk.Label(audio_frame, text="Artist")
+            label2.grid(row=2*v_i, column=1, padx=10, pady=3)
+            box = ttk.Entry(audio_frame, textvariable=artist_variable)
+            box.grid(row=2*v_i, column=2, padx=10, pady=3)
+
+            song_variable = tk.StringVar(audio_frame)
+            song_variable.set(v.song)
+            label3 = ttk.Label(audio_frame, text="Song")
+            label3.grid(row=2*v_i+1, column=1, padx=10, pady=3)
+            box2 = ttk.Entry(audio_frame, textvariable=song_variable)
+            box2.grid(row=2*v_i+1, column=2, padx=10, pady=3)
+
+            value_dict["audio"] += [{"artist": artist_variable,
+                                     "song": song_variable}]
+
+        length = len(value_dict["audio"])
+        label = ttk.Label(audio_frame,
+                          text="{:02d}:".format(length+1))
+        label.grid(row=2*length, column=0, padx=10, pady=3)
+        box = ttk.Button(
+            audio_frame, command=self.add_audio_credit, text="Add")
+        box.grid(row=2*length, column=1, padx=10, pady=3, sticky="w")
+        audio_frame.grid(sticky='ew', rowspan=2*length+1)
+
+        label = ttk.Label(self.sub_frame, text="Video Credits",
+                          font="Roboto 14 bold")
+        label.grid(columnspan=5, pady=10)
+        video_frame = ttk.Frame(self.sub_frame)
+        grid_row = 0
+        for v_i, v in enumerate(value.video):
+            label = ttk.Label(video_frame,
+                              text="{:02d}:".format(v_i+1))
+            label.grid(row=grid_row, column=0, padx=10, pady=3)
+            
+            box7 = ttk.Button(
+                video_frame,
+                command=partial(self.remove_video_credit, v_i),
+                text="Remove")
+            box7.grid(row=grid_row, column=4, padx=10, pady=3)
+
+            studio_variable = tk.StringVar(video_frame)
+            studio_variable.set(v.studio)
+            label2 = ttk.Label(video_frame, text="Studio")
+            label2.grid(row=grid_row, column=1, padx=10, pady=3)
+            box = ttk.Entry(video_frame, textvariable=studio_variable)
+            box.grid(row=grid_row, column=2, padx=10, pady=3)
+            grid_row += 1
+
+            title_variable = tk.StringVar(video_frame)
+            title_variable.set(v.title)
+            label3 = ttk.Label(video_frame, text="Title")
+            label3.grid(row=grid_row, column=1, padx=10, pady=3)
+            box2 = ttk.Entry(video_frame, textvariable=title_variable)
+            box2.grid(row=grid_row, column=2, padx=10, pady=3)
+            grid_row += 1
+
+            date_variable = tk.StringVar(video_frame)
+            date_variable.set(v.date)
+            label4 = ttk.Label(video_frame, text="Date")
+            label4.grid(row=grid_row, column=1, padx=10, pady=3)
+            box3 = ttk.Entry(video_frame, textvariable=date_variable)
+            box3.grid(row=grid_row, column=2, padx=10, pady=3)
+            grid_row += 1
+
+            label5 = ttk.Label(video_frame, text="Performers")
+            label5.grid(row=grid_row, column=1, padx=10, pady=3)
+            performer_variables = []
+            for p_i, performer in enumerate(v.performers):
+                performer_variable = tk.StringVar(video_frame)
+                performer_variable.set(performer)
+                box4 = ttk.Entry(video_frame, textvariable=performer_variable)
+                box4.grid(row=grid_row, column=2, padx=10, pady=3)
+                box5 = ttk.Button(video_frame,
+                                  command=partial(
+                                      self.remove_perfomer, v_i, p_i),
+                                  text="Remove")
+                box5.grid(row=grid_row, column=3, padx=10, pady=3)
+                performer_variables.append(performer_variable)
+                grid_row += 1
+            box6 = ttk.Button(video_frame,
+                              command=partial(self.add_performer, v_i),
+                              text="Add")
+            box6.grid(row=grid_row, column=2, padx=10, pady=3, sticky="w")
+            grid_row += 1
+
+            value_dict["video"] += [{
+                "studio": studio_variable,
+                "title": title_variable,
+                "date": date_variable,
+                "performers": performer_variables,
+
+            }]
+
+        length = len(value_dict["video"])
+        label = ttk.Label(video_frame, text="{:02d}:".format(length+1))
+        label.grid(row=grid_row, column=0, padx=10, pady=3)
+        box = ttk.Button(
+            video_frame, command=self.add_video_credit, text="Add")
+        box.grid(row=grid_row, column=1, padx=10, pady=3)
+        video_frame.grid(sticky='ew', rowspan=4*len(value_dict["video"])+1)
+        self.sub_frame.grid(columnspan=4,
+                            rowspan=2*len(value_dict["audio"])+grid_row+2,
+                            sticky="ew")
+
+        self.parent.components["credits"] = value_dict
+
+    def add_audio_credit(self):
+        self.parent.config.credits.__dict__["audio"].append(AudioCredit())
+        self.redraw()
+
+    def remove_audio_credit(self, index):
+        self.parent.config.credits.audio.pop(index)
+        self.redraw()
+
+    def add_video_credit(self):
+        self.parent.config.credits.__dict__["video"].append(VideoCredit())
+        self.redraw()
+
+    def remove_video_credit(self, index):
+        self.parent.config.credits.video.pop(index)
+        self.redraw()
+
+    def add_performer(self, video_index):
+        self.parent.config.credits.video[video_index].performers.append("")
+        self.redraw()
+
+    def remove_perfomer(self, video_index, performer_index):
+        self.parent.config.credits.video[video_index].performers.pop(
+            performer_index)
+        self.redraw()
+
+
+class SourcesTab(AbstractTab):
+    def draw(self):
+        value = self.parent.config.sources
+        value_list = []
+        for v_i, v in enumerate(value):
+            label = ttk.Label(self.sub_frame, text="{:02d}: ".format(v_i + 1))
+            variable = tk.StringVar(self.sub_frame)
+            variable.set(v)
+            label.grid(row=v_i, column=0, padx=10, pady=3)
+            label2 = ttk.Label(self.sub_frame, textvariable=variable)
+            label2.grid(row=v_i, column=1, padx=10, pady=3, sticky="w")
+            box = ttk.Button(self.sub_frame,
+                             command=partial(self.replace_source, v_i),
+                             text="Replace")
+            box.grid(row=v_i, column=2, padx=10, pady=3)
+            box2 = ttk.Button(
+                self.sub_frame,
+                command=partial(self.remove_source, v_i),
+                text="Remove")
+            box2.grid(row=v_i, column=3, padx=10, pady=3)
+            value_list += [variable]
+
+        v_i = len(value_list)
+        label = ttk.Label(
+            self.sub_frame, text="{:02d}: ".format(len(value) + 1))
+        label.grid(row=v_i, column=0, padx=10, pady=3)
+        variable = tk.StringVar(self.sub_frame)
+        box = ttk.Button(self.sub_frame,
+                         command=self.add_source,
+                         text="Add")
+        box.grid(row=v_i, column=1, padx=10, pady=3, sticky="w")
+
+        self.sub_frame.grid(columnspan=4, rowspan=v_i+1, sticky="ew")
+        self.parent.components["sources"] = value_list
+
+    def add_source(self):
+        path = _get_path(
+            self.parent.config.ITEMS["sources"]["exts"], self.parent.window)
+        if path != START_DIR:
+            self.parent.config.sources.append(path)
+            self.redraw()
+
+    def replace_source(self, index):
+        path = _get_path(
+            self.parent.config.ITEMS["sources"]["exts"], self.parent.window)
+        if path != START_DIR:
+            self.parent.config.sources[index] = path
+        self.parent.components["sources"][index].set(path)
+
+    def remove_source(self, index):
+        self.parent.config.sources.pop(index)
+        self.redraw()
