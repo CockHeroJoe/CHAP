@@ -383,7 +383,7 @@ class RoundsTab(AbstractTab):
 
     def edit_round(self, config, variable):
         def _set_name(n: str): variable.set(n)
-        RoundGUI(self.parent.window, v, _set_name)
+        RoundGUI(self.parent.window, config, _set_name)
 
     def add_round(self):
         def _new_round(config):
