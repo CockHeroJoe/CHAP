@@ -50,6 +50,12 @@ class OutputConfig:
             "default": 1,
             "help": "number of versions"
         },
+        "cache": {
+            "type": str,
+            "choices": ["all", "round"],
+            "default": "round",
+            "help": "memory usage before dumping to disk"
+        },
         "assemble": {
             "type": bool,
             "default": False,
@@ -64,12 +70,6 @@ class OutputConfig:
             "type": bool,
             "default": False,
             "help": "delete intermediate files after assembly"
-        },
-        "cache": {
-            "type": str,
-            "choices": ["all", "round"],
-            "default": "round",
-            "help": "memory usage before dumping to disk"
         },
         "_settings": {
             "type": str,
