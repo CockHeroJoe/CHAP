@@ -150,6 +150,7 @@ class GUI(AbstractGUI):
 
         self.menubar = tk.Menu(self.window)
         file_menu = tk.Menu(self.menubar, tearoff=0)
+        file_menu.add_command(label="Open", command=self.open)
         file_menu.add_command(label="Run", command=self.start)
         file_menu.add_command(label="Save", command=self.save)
         file_menu.add_command(label="Save As", command=self.save_as)
@@ -197,6 +198,13 @@ class GUI(AbstractGUI):
 
     def about(self):
         pass
+
+    def open(self):
+        path = _get_path([("YAML files", "*.yaml")], self.window)
+        self._settings_path = path
+        config = OutputConfig({"_settings": path}, True)
+        self.config = config
+        self.redraw()
 
     def start(self):
         config = self._get_gui_config()

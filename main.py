@@ -1,10 +1,19 @@
 #! /usr/bin/env python3
+import os
+
+from moviepy.config import change_settings
 
 from parsing import OutputConfig, parse_command_line_args
 from gui import GUI
 
-#from moviepy.config import change_settings
-#change_settings({"IMAGEMAGICK_BINARY": r"C:\\Program Files\\ImageMagick-7.0.10-Q16-HDRI\\magick.exe"})
+
+# Overrride moviepy resolution bug
+if os.name == "nt":
+    import winreg as wr 
+    key = wr.OpenKey(wr.HKEY_LOCAL_MACHINE, "SOFTWARE\\ImageMagick\\Current")
+    binary = wr.QueryValueEx(key, "BinPath")[0] + "\\magick.exe"
+    key.Close()
+    change_settings({"IMAGEMAGICK_BINARY": binary})
 
 
 def main():
