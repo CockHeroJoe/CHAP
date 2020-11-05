@@ -20,7 +20,7 @@ class AbstractGUI():
         self.window.geometry("800x600")
 
         def _update_config(new_config):
-            config.__dict__.update(new_config)
+            config.__dict__.update(new_config.__dict__)
             self.config = config.copy()
 
         self.update_config = update or _update_config
@@ -42,7 +42,6 @@ class AbstractGUI():
                 self.components[attribute] = element
             i += len(element) + 2 if type(element) == list else 1
 
-        
         frames[0].columnconfigure(1, weight=1)
 
         return frames
@@ -124,7 +123,8 @@ class AbstractGUI():
                         else _nf(v.get())
                         )
                   )
-            for k, v in self.components.items()}
+            for k, v in self.components.items()
+        }
 
     def redraw(self):
         raise NotImplementedError(
@@ -200,8 +200,10 @@ class GUI(AbstractGUI):
 
     def start(self):
         config = self._get_gui_config()
+        config["_settings"] = self._settings_path
         config = OutputConfig(config, False)
         self.update_config(config)
+        self.window.destroy()
         make(config)
 
     def save(self):
@@ -314,11 +316,9 @@ class ScrollableFrame(ttk.Frame):
             self, orient="vertical", command=canvas.yview)
         self.scrollable_frame = ttk.Frame(canvas)
 
-        self.scrollable_frame.bind(
+        canvas.bind(
             "<Configure>",
-            lambda e: canvas.configure(
-                scrollregion=canvas.bbox("all")
-            )
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
@@ -408,7 +408,7 @@ class CreditsTab(AbstractTab):
         for v_i, v in enumerate(value.audio):
             label = ttk.Label(audio_frame, text="{:02d}:".format(v_i+1))
             label.grid(row=2*v_i, column=0, padx=10, pady=3)
-            
+
             box3 = ttk.Button(
                 audio_frame,
                 command=partial(self.remove_audio_credit, v_i),
@@ -450,7 +450,7 @@ class CreditsTab(AbstractTab):
             label = ttk.Label(video_frame,
                               text="{:02d}:".format(v_i+1))
             label.grid(row=grid_row, column=0, padx=10, pady=3)
-            
+
             box7 = ttk.Button(
                 video_frame,
                 command=partial(self.remove_video_credit, v_i),

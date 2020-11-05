@@ -1,19 +1,17 @@
-
 import os
 import random
 import fnmatch
-
 from contextlib import ExitStack
-from moviepy.editor import concatenate_videoclips,\
-    AudioFileClip,\
-    ColorClip,\
-    CompositeAudioClip,\
-    CompositeVideoClip,\
-    ImageClip,\
-    ImageSequenceClip,\
-    TextClip,\
-    VideoClip,\
-    VideoFileClip
+
+from moviepy.audio.AudioClip import CompositeAudioClip
+from moviepy.audio.fx.volumex import volumex
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.compositing.concatenate import concatenate_videoclips
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.video.fx.resize import resize
+from moviepy.video.VideoClip import ColorClip, ImageClip, TextClip, VideoClip
 
 from constants import TRANSITION_DURATION, CREDIT_DISPLAY_TIME
 from interleave import interleave
@@ -63,7 +61,7 @@ def make(output_config: OutputConfig):
                 ))
                 # resize and fit beatmeter
                 new_height = beatmeter.h * output_config.xdim / beatmeter.w
-                beatmeter = beatmeter.resize((output_config.xdim, new_height))
+                beatmeter = resize(beatmeter, (output_config.xdim, new_height))
                 beatmeter = beatmeter.set_position(
                     ("center", output_config.ydim - 20 - beatmeter.h)
                 )
@@ -98,9 +96,9 @@ def make(output_config: OutputConfig):
                 beat_audio = CompositeAudioClip(audio)
                 level = round_config.audio_level
                 if level > 1:
-                    beat_audio.volumex(1 / level)
+                    volumex(beat_audio, 1 / level)
                 else:
-                    round_i.volumex(level)
+                    volumex(round_i, level)
                 audio = CompositeAudioClip([beat_audio, round_i.audio])
                 round_i = round_i.set_audio(audio)
             round_i = round_i.set_duration(round_config.duration)

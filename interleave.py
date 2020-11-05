@@ -1,7 +1,8 @@
 import random
 import pygame as pg
 
-from moviepy.editor import VideoFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.video.fx.resize import resize
 
 from utils import draw_progress_bar
 from parsing import RoundConfig, OutputConfig
@@ -48,7 +49,7 @@ def interleave(
             start = sources[i].start
 
             # Cut a subclip
-            out_clip = clip.subclip(start, start + length).resize(
+            out_clip = resize(clip.subclip(start, start + length),
                 (output_config.xdim, output_config.ydim)
             )
             out_clips.append(out_clip)

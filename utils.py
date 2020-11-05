@@ -2,9 +2,14 @@ import sys
 import random
 
 from contextlib import ExitStack
-from moviepy.editor import CompositeVideoClip, TextClip, VideoClip, VideoFileClip
 
-from constants import *
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
+from moviepy.video.compositing.transitions import crossfadein
+from moviepy.video.fx.resize import resize
+from moviepy.video.io.VideoFileClip import VideoFileClip
+from moviepy.video.VideoClip import TextClip, VideoClip, ColorClip
+
+from constants import FADE_DURATION, TRANSITION_DURATION
 
 
 class SourceFile:
@@ -31,7 +36,7 @@ def make_text_screen(
     if background is None:
         background = get_black_clip(dimensions)
     return CompositeVideoClip([
-        background.set_duration(duration).resize(dimensions),
+        resize(background.set_duration(duration), dimensions),
         TextClip(
             text,
             fontsize=font,
@@ -52,7 +57,7 @@ def make_background(
 
 def crossfade(videos: [VideoClip], fade_duration: float = FADE_DURATION) -> VideoClip:
     for v_i in range(1, len(videos)):
-        videos[v_i] = videos[v_i].crossfadein(fade_duration).set_start(
+        videos[v_i] = crossfadein(videos[v_i], fade_duration).set_start(
             videos[v_i - 1].end - fade_duration
         )
     return CompositeVideoClip(videos)

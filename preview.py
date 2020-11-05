@@ -5,7 +5,8 @@ import time
 import math
 from moviepy.decorators import convert_masks_to_RGB, requires_duration
 from moviepy.video.io.preview import imdisplay
-from moviepy.editor import VideoClip, clips_array
+from moviepy.video.VideoClip import VideoClip
+from moviepy.video.compositing.CompositeVideoClip import clips_array
 
 from constants import DISPLAY_SIZE
 

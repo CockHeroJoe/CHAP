@@ -1,4 +1,7 @@
-from moviepy.editor import CompositeVideoClip, ImageClip, TextClip
+
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
+from moviepy.video.fx.resize import resize
+from moviepy.video.VideoClip import ImageClip, TextClip
 
 
 class AudioCredit:
@@ -140,7 +143,7 @@ def make_credits(credits_data, width, color='white', stroke_color='black',
                             size=(left.w + right.w + gap, right.h),
                             bg_color=None)
 
-    scaled = cc.resize(width=width)  # Scale to the required size
+    scaled = resize(cc, width=width)  # Scale to the required size
 
     # Transform the whole credit clip into an ImageClip
     imclip = ImageClip(scaled.get_frame(0))
