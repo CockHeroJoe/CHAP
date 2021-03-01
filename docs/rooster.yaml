@@ -1,26 +1,54 @@
+# Comments like this can be removed or left in
+# NOTE: all file paths should be absolute (starting at C:/ or D:/ in Windows)
 name: Rooster Hero
 assemble: True
 xdim: 1280
-ydim: 720
-cache: all
-rounds: # Comments like this can be removed or left in
-  - # This hyphen inidcates the start of the first round
+ydim: 720 # This is 720p widescreen resolution
+# Affects how often videos are saved.
+cache: all # Options: [round, all] (default: round)
+rounds: # Each needs name, speed, cut, bmcfg (plus beats and beatmeter for now), sources (and optionally credits)
+  - # This hyphen indicates the start of the first round
     name: Domesticated Cocks # Displayed during round transitions
-    speed: 5
-    music: /mnt/d/Downloads/RoosterHero/01/The.Entertainer.wav
-    beats: /mnt/d/Downloads/RoosterHero/01/beat_track.wav
-    beatmeter: /mnt/d/Downloads/RoosterHero/01/beats_folder/
-    bpm: 93 # Beats Per Minute of song
-    audio_level: 0.1 # Listen to roosters at 10%, music and beats at 100%
-    duration: 12 # Length of round (should be length of song) in seconds
-    sources:
-      - /mnt/d/Downloads/RoosterHero/01/A_barnyard_with_chickens.mp4  
-      - /mnt/d/Downloads/RoosterHero/01/rooster.mp4
-    credits:
+
+    # Affects how many cuts per bar
+    speed: # Options: [1, 2, 3, 4, 5] (default 3)
+      5 # speed == 5 -> 4 cuts per bar
+      # speed == 3 -> one cut per bar
+      # speed == 1 -> 1 cut per 4 bars
+
+    # Affects how source clips are selected in terms of their order
+    cut: # Options: interleave, skip, randomize (default interleave)
+      "interleave" # Cut clips after semi-random intervals from all sources concurrently
+      # cut == skip -> Start then finish each source in sequence, skipping chunks
+      # cut == random -> Cut random clips from anywhere in any source
+
+    # Affects the relative volumes of source audio vs music/beats
+    audio_level: # Options: any non-negative decimal number (default 0.0)
+      0.1 # audio level == 0.1 -> Source audio at 10%, music/beats at 100%
+      # audio level == 0.0 -> Source audio at 0%, music/beats at 100%
+      # audio level == 10.0 -> Source audio at 100%, music/beats at 10%
+
+    # NOTE: this option is IMPORTANT and overrides several others
+    # The filepath of the config file from the beatmeter generator
+    bmcfg: D:/Downloads/RoosterHero/01/Scott.Joplin-the.Entertainer-2020.10.19.bmcfg.json
+
+    # These are OVERRIDDEN by bmcfg, don't bother setting them if you use set bmcfg
+    music: D:/Downloads/RoosterHero/01/The.Entertainer.wav # The song's filepath
+    bpm: 93.0 # Beats Per Minute of song
+    duration: 12.0 # Length of round (should be length of song) in seconds
+
+    # These are PLANNED to be OVERRIDDEN by bmcfg (but are still needed)
+    beats: D:/Downloads/RoosterHero/01/beat_track.wav # Filepath of click track of beats
+    beatmeter: D:/Downloads/RoosterHero/01/beats_folder/ # Directory of images of beats
+
+    sources: # A list of filepaths for source videos
+      - D:/Downloads/RoosterHero/01/A_barnyard_with_chickens.mp4
+      - D:/Downloads/RoosterHero/01/rooster.mp4
+    credits: # A list of credits for this round
       audio:
         - artist: Scott Joplin # Probably not the best song,
           song: The Entertainer # but it's in the public domain :D
-      video:
+      video: # NOTE: The order should match the order in sources, when using skip
         - studio: Videezy
           title: A Barnyard With Chickens
           date: 2019.10.19
