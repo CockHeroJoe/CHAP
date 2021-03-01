@@ -175,13 +175,12 @@ class Interleaver(_AbstractRandomSelector):
 class Randomizer(_AbstractRandomSelector):
     def advance_sources(self, length: float, current_time: float, i: int):
         for source in self.sources:
+            offset = SourceFile.get_random_start()
             source.start = random.uniform(
-                SourceFile.get_random_start(),
-                source.clip.duration - length * 2)
+                offset, source.clip.duration - length * 2 - offset)
 
 
 class Skipper(_AbstractCutter):
-
     def get_source_clip_index(self, length: float) -> int:
         for i, source in enumerate(self.sources):
             if source.start + length <= source.clip.duration:
