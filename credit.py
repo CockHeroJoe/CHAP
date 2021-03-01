@@ -5,7 +5,7 @@ from moviepy.video.VideoClip import ImageClip, TextClip
 
 
 class AudioCredit:
-    def __init__(self, config: dict={}):
+    def __init__(self, config: dict = {}):
         if type(config) != dict:
             config = config.__dict__
 
@@ -21,9 +21,17 @@ class AudioCredit:
         ]
         return ("{}\n" * len(fields)).format(*fields)
 
+    def validate(self):
+        if type(self.artist) != str:
+            raise ValueError(
+                "wrong data type for artist ({self.artist}), must be str")
+        elif type(self.song) != str:
+            raise ValueError(
+                "wrong data type for song ({self.song}), must be str")
+
 
 class VideoCredit:
-    def __init__(self, config: dict={}):
+    def __init__(self, config: dict = {}):
         if type(config) != dict:
             config = config.__dict__
 
@@ -43,6 +51,26 @@ class VideoCredit:
         ]
         return ("{}\n" * len(fields)).format(*fields)
 
+    def validate(self):
+        if type(self.studio) != str:
+            raise ValueError(
+                "wrong data type for studio ({self.studio}), must be str")
+        elif type(self.title) != str:
+            raise ValueError(
+                "wrong data type for title ({self.title}), must be str")
+        elif type(self.date) != str:
+            raise ValueError(
+                "wrong data type for date ({self.date}), must be str")
+        elif type(self.performers) != list:
+            raise ValueError(
+                "wrong data type for perfomers ({self.perfomers}), must be list"
+            )
+        for performer in self.performers:
+            if type(performer) != str:
+                raise ValueError(
+                    "wrong data type for performer ({performer}), must be str"
+                )
+
 
 class RoundCredits:
     def __init__(self, config: dict = None, _get=False):
@@ -50,12 +78,18 @@ class RoundCredits:
             config = {}
         if type(config) != dict:
             config = config.__dict__
-        
+
         if _get:
             config = _apply_to_leaves(config, "get")
 
         self.audio = [AudioCredit(c) for c in config.get("audio", [])]
         self.video = [VideoCredit(c) for c in config.get("video", [])]
+
+    def validate(self):
+        for audio_credit in self.audio:
+            audio_credit.validate()
+        for video_credit in self.video:
+            video_credit.validate()
 
 
 def make_credits(credits_data, width, color='white', stroke_color='black',
