@@ -54,7 +54,7 @@ def make(output_config: OutputConfig):
             beatmeter = None
             bmcfg = (round_config.beatmeter_config
                      if round_config.bmcfg else None)
-            if round_config.beatmeter is not None and False:
+            if round_config.beatmeter is not None:
                 print("assembling beatmeter #{}...".format(r_i + 1))
                 beatmeter = stack.enter_context(ImageSequenceClip(
                     round_config.beatmeter,
