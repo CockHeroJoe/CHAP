@@ -92,7 +92,7 @@ class RoundCredits:
             video_credit.validate()
 
 
-def make_credits(credits_data, width, color='white', stroke_color='black',
+def make_credits(credits_data: [RoundCredits], width, color='white', stroke_color='black',
                  stroke_width=2, font='Impact-Normal', fontsize=60, gap=0):
     """
 
