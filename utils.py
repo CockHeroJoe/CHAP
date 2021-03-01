@@ -13,8 +13,14 @@ from constants import FADE_DURATION, TRANSITION_DURATION
 
 
 class SourceFile:
+
+    @staticmethod
+    def get_random_start():
+        """Skip first 15-25 seconds"""
+        return 15 + random.random() * 10
+
     def __init__(self, clip):
-        self.start = 15 + random.random() * 10  # skip first 15-25 seconds
+        self.start = SourceFile.get_random_start()
         self.clip = clip
 
 
