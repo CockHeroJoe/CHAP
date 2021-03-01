@@ -14,7 +14,7 @@ from moviepy.video.fx.resize import resize
 from moviepy.video.VideoClip import ColorClip, ImageClip, TextClip, VideoClip
 
 from constants import TRANSITION_DURATION, CREDIT_DISPLAY_TIME
-from interleave import interleave
+from cutters import Interleaver, Skipper, Randomizer
 from credit import make_credits
 from utils import SourceFile,\
     get_black_clip,\
@@ -22,8 +22,7 @@ from utils import SourceFile,\
     make_text_screen,\
     make_background,\
     crossfade
-from parsing import OutputConfig,\
-    RoundConfig
+from parsing import OutputConfig, RoundConfig
 
 
 def make(output_config: OutputConfig):
@@ -53,11 +52,13 @@ def make(output_config: OutputConfig):
 
             # Assemble beatmeter video from beat images
             beatmeter = None
-            if round_config.beatmeter is not None:
+            bmcfg = (round_config.beatmeter_config
+                     if round_config.bmcfg else None)
+            if round_config.beatmeter is not None and False:
                 print("assembling beatmeter #{}...".format(r_i + 1))
                 beatmeter = stack.enter_context(ImageSequenceClip(
                     round_config.beatmeter,
-                    fps=output_config.fps
+                    fps=bmcfg.fps if bmcfg else output_config.fps
                 ))
                 # resize and fit beatmeter
                 new_height = beatmeter.h * output_config.xdim / beatmeter.w
@@ -79,33 +80,40 @@ def make(output_config: OutputConfig):
                 ]
 
             # TODO: get duration, bpm from music track; generate beats & meter
-            # TODO: OR use sklave Beatmeter Generator's json
 
             # Generate interleaved clips from sources
             print("loading sources for round #{}...".format(r_i + 1))
             sources = [SourceFile(stack.enter_context(VideoFileClip(s)))
                        for s in round_config.sources]
             print("shuffling input videos for round #{}...".format(r_i + 1))
-            shuffled_clips = interleave(output_config, round_config, sources)
+
+            # Get list of clips cut from sources using chosen cutter
+            Cutter = {
+                "skip": Skipper,
+                "interleave": Interleaver,
+                "randomize": Randomizer,
+            }[round_config.cut]
+            cutter = Cutter(output_config, round_config, bmcfg, sources)
+            clips = cutter.get_compilation()
 
             # Concatenate this round's video clips together and add beatmeter
-            round_i = concatenate_videoclips(shuffled_clips)
+            round_i = concatenate_videoclips(clips)
             if beatmeter is not None:
                 round_i = CompositeVideoClip([round_i, beatmeter])
             if audio is not None:
                 beat_audio = CompositeAudioClip(audio)
                 level = round_config.audio_level
                 if level > 1:
-                    volumex(beat_audio, 1 / level)
+                    beat_audio = volumex(beat_audio, 1 / level)
                 else:
-                    volumex(round_i, level)
+                    round_i = volumex(round_i, level)
                 audio = CompositeAudioClip([beat_audio, round_i.audio])
                 round_i = round_i.set_audio(audio)
             round_i = round_i.set_duration(round_config.duration)
 
             if output_config.cache == "round":
                 name = get_round_name(output_name, round_config.name, ext)
-                round_i.write_videofile(name, codec=codec)
+                round_i.write_videofile(name, codec=codec, threads=4)
                 round_config._is_on_disk = True
                 stack.close()
             else:
@@ -120,7 +128,7 @@ def make(output_config: OutputConfig):
                 for round_config in round_configs
             ]
 
-            # Add round transitons
+            # Add round transitions
             dims = (output_config.xdim, output_config.ydim)
             round_transitions = [
                 make_text_screen(dims,
@@ -172,7 +180,8 @@ def make(output_config: OutputConfig):
             # Output final video
             output = crossfade(all_video)
             name = "{}.{}".format(output_name, ext)
-            output.write_videofile(name, codec=codec, fps=output_config.fps)
+            output.write_videofile(
+                name, codec=codec, fps=output_config.fps, threads=4)
 
             # Delete intermediate files
             if output_config.delete:
