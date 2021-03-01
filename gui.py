@@ -3,6 +3,7 @@ import tkinter.ttk as ttk
 from ttkthemes import ThemedTk
 from tkinter import filedialog
 from functools import partial
+import os.path
 
 from parsing import OutputConfig, RoundConfig
 from run import make
@@ -20,10 +21,13 @@ class AbstractGUI():
         self.window.geometry("800x600")
 
         def _update_config(new_config):
-            config.__dict__.update(new_config.__dict__)
+            config.__dict__.update(new_config
+                                   if type(new_config) == dict
+                                   else new_config.__dict__)
             self.config = config.copy()
 
         self.update_config = update or _update_config
+        self.short_names = []
 
     def _generate_gui_elements(self):
         frames = [
@@ -35,6 +39,10 @@ class AbstractGUI():
         for attribute in self.config.ITEMS:
             value = self.config.__getattribute__(attribute)
             if attribute[0] == "_":
+                continue
+            elif (self.config.ITEMS.get("bmcfg") is not None
+                    and self.config.bmcfg is not None
+                    and attribute in ["bpm", "music", "duration"]):
                 continue
             element = self._generate_gui_element(
                 frames, attribute, value, i)
@@ -103,14 +111,29 @@ class AbstractGUI():
         elif validation["type"] == str and "exts" in validation:
             variable = tk.StringVar(frame)
             variable.set(value)
-            label2 = ttk.Label(frame, textvariable=variable)
-            label2.grid(row=i, column=1)
-            box = ttk.Label(frame, textvariable=variable)
+            short_name_var = tk.StringVar(frame)
+            short_name_var.set(value and os.path.basename(value))
+            self.short_names.append(short_name_var)
+
+            # TODO: if bmcfg is set, update round_config
+
+            def find_or_replace():
+                start_dir = os.path.dirname(value or ".")
+                path = _get_path(exts, self.window, start_dir)
+                if path == start_dir:
+                    return
+                variable.set(path)
+                short_name_var.set(os.path.basename(path))
+                if attribute == "bmcfg":
+                    self.config.bmcfg = path
+                    self.config.load_beatmeter_config()
+                    self.redraw()
+
+            box = ttk.Label(frame, textvariable=short_name_var)
             box.grid(row=i, column=1)
             exts = validation["exts"]
             button = ttk.Button(frame, text="Find" if value is None else "Replace",
-                                command=lambda: variable.set(
-                                    _get_path(exts, self.window, value)))
+                                command=find_or_replace)
             button.grid(row=i, column=2)
 
         return variable
@@ -128,15 +151,15 @@ class AbstractGUI():
 
     def redraw(self):
         raise NotImplementedError(
-            "This is an abstract method and hasn't been overidden!")
+            "This is an abstract method and hasn't been overridden!")
 
     def draw(self):
         raise NotImplementedError(
-            "This is an abstract method and hasn't been overidden!")
+            "This is an abstract method and hasn't been overridden!")
 
     def set_name(self, name: str):
         raise NotImplementedError(
-            "This is an abstract method and hasn't been overidden!")
+            "This is an abstract method and hasn't been overridden!")
 
 
 class GUI(AbstractGUI):
@@ -346,7 +369,7 @@ class AbstractTab:
 
     def draw(self):
         raise NotImplementedError(
-            "This is an abstract method and hasn't been overidden!")
+            "This is an abstract method and hasn't been overridden!")
 
     def redraw(self):
         self.sub_frame.destroy()
@@ -499,7 +522,7 @@ class CreditsTab(AbstractTab):
                 box4.grid(row=grid_row, column=2, padx=10, pady=3)
                 box5 = ttk.Button(video_frame,
                                   command=partial(
-                                      self.remove_perfomer, v_i, p_i),
+                                      self.remove_performer, v_i, p_i),
                                   text="Remove")
                 box5.grid(row=grid_row, column=3, padx=10, pady=3)
                 performer_variables.append(performer_variable)
@@ -551,7 +574,7 @@ class CreditsTab(AbstractTab):
         self.parent.config.credits.video[video_index].performers.append("")
         self.redraw()
 
-    def remove_perfomer(self, video_index, performer_index):
+    def remove_performer(self, video_index, performer_index):
         self.parent.config.credits.video[video_index].performers.pop(
             performer_index)
         self.redraw()
@@ -559,14 +582,20 @@ class CreditsTab(AbstractTab):
 
 class SourcesTab(AbstractTab):
     def draw(self):
+        self.short_paths = []
         value = self.parent.config.sources
         value_list = []
         for v_i, v in enumerate(value):
             label = ttk.Label(self.sub_frame, text="{:02d}: ".format(v_i + 1))
             variable = tk.StringVar(self.sub_frame)
             variable.set(v)
+            self.short_paths.append(tk.StringVar(self.sub_frame))
+            self.short_paths[-1].set(os.path.basename(v))
             label.grid(row=v_i, column=0, padx=10, pady=3)
-            label2 = ttk.Label(self.sub_frame, textvariable=variable)
+            label2 = ttk.Label(
+                self.sub_frame,
+                textvariable=self.short_paths[-1]
+            )
             label2.grid(row=v_i, column=1, padx=10, pady=3, sticky="w")
             box = ttk.Button(self.sub_frame,
                              command=partial(self.replace_source, v_i),
@@ -605,6 +634,7 @@ class SourcesTab(AbstractTab):
         if path != START_DIR:
             self.parent.config.sources[index] = path
         self.parent.components["sources"][index].set(path)
+        self.short_paths[index].set(os.path.basename(path))
 
     def remove_source(self, index):
         self.parent.config.sources.pop(index)
