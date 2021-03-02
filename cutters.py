@@ -48,7 +48,7 @@ class _AbstractCutter(metaclass=ABCMeta):
         frame_time = 1.0 / self.output_config.fps
         while duration - current_time > frame_time:
             # Select a random clip length that is a whole multiple of beats long
-            if self.bmcfg and len(sections) > 1:
+            if self.bmcfg and len(sections) >= 1:
                 # Use beatmeter generator config to time cuts to beats perfectly
                 if subsection_index == 0:
                     # compute number of subsections in this pattern and length
@@ -112,9 +112,12 @@ class _AbstractCutter(metaclass=ABCMeta):
             clips.append(out_clips[self._chosen or 0])
 
             current_time += length
-            draw_progress_bar(
-                min(1, current_time / duration), 80)
-        print("\nDone!")
+
+            # TODO: move progress into GUI
+            if self.versions > 1:
+                draw_progress_bar(min(1, current_time / duration), 80)
+        if self.versions > 1:
+            print("\nDone!")
 
         return clips
 
