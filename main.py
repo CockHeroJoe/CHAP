@@ -5,11 +5,12 @@ from moviepy.config import change_settings as moviepy_change_settings
 
 from parsing import OutputConfig, parse_command_line_args
 from gui import GUI
+from run import make
 
 
 # Override moviepy's binary filepath resolution bug in Windows
 if os.name == "nt":
-    import winreg as wr
+    import winreg as wr  # pylint: disable=import-error
     try:
         with wr.OpenKey(
                 wr.HKEY_LOCAL_MACHINE,
@@ -23,8 +24,12 @@ if os.name == "nt":
 
 
 def main():
-    output_config = OutputConfig(parse_command_line_args())
-    GUI(output_config)
+    args = parse_command_line_args()
+    output_config = OutputConfig(args)
+    if args.execute:
+        make(output_config)
+    else:
+        GUI(output_config)
 
 
 if __name__ == "__main__":
