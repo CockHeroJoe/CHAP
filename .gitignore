@@ -133,7 +133,8 @@ dmypy.json
 .pyre/
 
 
-# Video files
+# Video and audio generated files
+*.mp3
 *.mp4
 *.avi
 
