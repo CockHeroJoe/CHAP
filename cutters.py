@@ -45,7 +45,8 @@ class _AbstractCutter(metaclass=ABCMeta):
         subsection_index = 0
         sections = self.bmcfg.sections
         current_time = 0.0
-        while current_time < duration:
+        frame_time = 1.0 / self.output_config.fps
+        while duration - current_time > frame_time:
             # Select a random clip length that is a whole multiple of beats long
             if self.bmcfg and len(sections) > 1:
                 # Use beatmeter generator config to time cuts to beats perfectly
@@ -75,11 +76,11 @@ class _AbstractCutter(metaclass=ABCMeta):
                 elif (section_index == len(sections) - 1
                         and subsection_index == num_subsections - 1):
                     # Last cut in round is extended to match duration of Base track
-                    length += duration - sections[-1].stop
+                    length = duration - current_time
                 elif subsection_index == num_subsections - 1:
                     # Last cut per section is adjusted to account for drift due to
                     # imperfect beat timings given in beatmeter config
-                    length = sections[section_index+1].start - current_time
+                    length = sections[section_index + 1].start - current_time
                 subsection_index += 1
             else:
                 # Simple accelerating cuts if beatmeter config is not provided
@@ -92,7 +93,7 @@ class _AbstractCutter(metaclass=ABCMeta):
 
             # Cut multiple clips from various sources
             out_clips = []
-            for _ in [chr(a + 97) for a in range(self.output_config.versions)]:
+            for _ in range(self.versions):
                 # Get the next clip source
                 i = self.get_source_clip_index(length)
                 clip = self.sources[i].clip
