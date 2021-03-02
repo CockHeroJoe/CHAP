@@ -3,6 +3,8 @@ from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from moviepy.video.fx.resize import resize
 from moviepy.video.VideoClip import ImageClip, TextClip
 
+import datetime
+
 
 class AudioCredit:
     def __init__(self, config: dict = {}):
@@ -38,7 +40,7 @@ class VideoCredit:
         self.studio = config.get("studio", None)
         self.title = config.get("title", None)
         self.date = config.get("date", None)
-        self.performers = config.get("performers", None)
+        self.performers = config.get("performers", [])
 
     def __str__(self):
         fields = [
@@ -52,24 +54,32 @@ class VideoCredit:
         return ("{}\n" * len(fields)).format(*fields)
 
     def validate(self):
-        if type(self.studio) != str:
+        if self.studio is not None and type(self.studio) != str:
             raise ValueError(
-                "wrong data type for studio ({self.studio}), must be str")
-        elif type(self.title) != str:
+                "wrong data type for studio ({}), must be str".format(
+                    self.studio))
+        elif self.title is not None and type(self.title) != str:
             raise ValueError(
-                "wrong data type for title ({self.title}), must be str")
-        elif type(self.date) != str:
+                "wrong data type for title ({}), must be str".format(
+                    self.title))
+        elif self.date is not None and (type(self.date) != str):
             raise ValueError(
-                "wrong data type for date ({self.date}), must be str")
+                "wrong data type for date ({}), must be str".format(
+                    self.date))
         elif type(self.performers) != list:
             raise ValueError(
-                "wrong data type for perfomers ({self.perfomers}), must be list"
-            )
+                "wrong data type for performers ({}), must be list".format(
+                    self.performers))
         for performer in self.performers:
             if type(performer) != str:
                 raise ValueError(
                     "wrong data type for performer ({performer}), must be str"
                 )
+        if self.date is not None:
+            try:
+                datetime.datetime.strptime(self.date, "%y.%m.%d")
+            except ValueError:
+                raise ValueError("Incorrect data format, should be YYYY-MM-DD")
 
 
 class RoundCredits:
