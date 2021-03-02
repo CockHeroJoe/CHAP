@@ -1,7 +1,8 @@
 import os
 import random
 import fnmatch
-from contextlib import ExitStack
+from contextlib import ExitStack, AbstractContextManager
+from threading import Thread
 
 from moviepy.audio.AudioClip import CompositeAudioClip
 from moviepy.audio.fx.volumex import volumex
@@ -24,11 +25,51 @@ from utils import SourceFile,\
     crossfade
 from parsing import OutputConfig, RoundConfig
 
+PRESET = "fast"
+
+
+class StackList(AbstractContextManager):
+    def __init__(self, num_rounds: int):
+        self._stacks = [ExitStack() for _ in range(num_rounds)]
+
+    def __exit__(self, *args, **kwargs):
+        for stack in self._stacks:
+            try:
+                stack.close()
+            except Exception as e:
+                print("Error closing stack: " + str(e))
+
+    def __getitem__(self, index: int):
+        return self._stacks[index]
+
+
+class ThreadWithReturnValue(Thread):
+    def __init__(self, group=None, target=None, name=None, daemon=False,
+                 args=(), kwargs={}, Verbose=None):
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+        self._return = None
+
+    def run(self):
+        try:
+            if self._target:
+                self._return = self._target(*self._args, **self._kwargs)
+        finally:
+            # Avoid a refcycle if the thread is running a function with
+            # an argument that has a member that points to the thread.
+            del self._target, self._args, self._kwargs
+
+    def join(self, *args):
+        Thread.join(self, *args)
+        return self._return
+
 
 def make(output_config: OutputConfig):
     ext = "avi" if output_config.raw else "mp4"
     codec = "png" if output_config.raw else None
     output_name = output_config.name
+
+    threads = []
+    max_threads = output_config.threads
 
     if output_config.rounds == []:
         print("ERROR: No round configs provided")
@@ -42,30 +83,39 @@ def make(output_config: OutputConfig):
             print("Reloaded round {} from disk".format(name))
 
     # shuffle clips for each round and attach beatmeter
-    with ExitStack() as stack:
+    with StackList(len(round_configs)) as stacks:
         round_videos = []
         for r_i, round_config in enumerate(round_configs):
+            stack = stacks[r_i]
 
             # Skip rounds that have been saved
             if round_config._is_on_disk:
                 continue
 
             # Assemble beatmeter video from beat images
-            beatmeter = None
             bmcfg = (round_config.beatmeter_config
                      if round_config.bmcfg else None)
             if round_config.beatmeter is not None:
+
+                def make_beatmeter():
+                    beatmeter = stack.enter_context(ImageSequenceClip(
+                        round_config.beatmeter,
+                        fps=bmcfg.fps if bmcfg else output_config.fps
+                    ))
+                    # resize and fit beatmeter
+                    new_height = (beatmeter.h * output_config.xdim
+                                  / beatmeter.w)  # pylint: disable=no-member
+                    beatmeter = resize(
+                        beatmeter, (output_config.xdim, new_height))
+                    beatmeter = beatmeter.set_position(
+                        ("center", output_config.ydim - 20 - beatmeter.h)
+                    )
+                    return beatmeter
+
+                beatmeter_thread = ThreadWithReturnValue(
+                    target=make_beatmeter, daemon=True)
                 print("assembling beatmeter #{}...".format(r_i + 1))
-                beatmeter = stack.enter_context(ImageSequenceClip(
-                    round_config.beatmeter,
-                    fps=bmcfg.fps if bmcfg else output_config.fps
-                ))
-                # resize and fit beatmeter
-                new_height = beatmeter.h * output_config.xdim / beatmeter.w
-                beatmeter = resize(beatmeter, (output_config.xdim, new_height))
-                beatmeter = beatmeter.set_position(
-                    ("center", output_config.ydim - 20 - beatmeter.h)
-                )
+                beatmeter_thread.start()
 
             # Assemble audio from music and beats
             audio = None
@@ -98,7 +148,9 @@ def make(output_config: OutputConfig):
 
             # Concatenate this round's video clips together and add beatmeter
             round_i = concatenate_videoclips(clips)
-            if beatmeter is not None:
+
+            if round_config.beatmeter is not None:
+                beatmeter = beatmeter_thread.join()
                 round_i = CompositeVideoClip([round_i, beatmeter])
             if audio is not None:
                 beat_audio = CompositeAudioClip(audio)
@@ -113,19 +165,40 @@ def make(output_config: OutputConfig):
 
             if output_config.cache == "round":
                 name = get_round_name(output_name, round_config.name, ext)
-                round_i.write_videofile(name, codec=codec, threads=4)
-                round_config._is_on_disk = True
-                stack.close()
+
+                def save_round():
+                    round_i.write_videofile(
+                        name,
+                        codec=codec,
+                        fps=output_config.fps,
+                        preset=PRESET,
+                    )
+                    stack.close()
+
+                round_config._is_on_disk = True  # TODO: test this
+                thread = Thread(target=save_round, daemon=True)
+                threads.append(thread)
+                thread.start()
+
+                if len(threads) >= max_threads:
+                    first, threads = threads[0], threads[1:]
+                    print("Waiting for round #{} to finish writing...".format(
+                        r_i - max_threads + 2
+                    ))
+                    first.join()
             else:
                 round_videos.append(round_i)
 
+        for thread in threads:
+            thread.join()
+
         if output_config.assemble:
-            # Reload rounds from output files
+            # Reload rounds from output files, if not still in memory
             rounds = [
-                stack.enter_context(VideoFileClip(
+                stacks[r_i].enter_context(VideoFileClip(
                     get_round_name(output_name, round_config.name, ext)))
                 if round_config._is_on_disk else round_videos.pop()
-                for round_config in round_configs
+                for r_i, round_config in enumerate(round_configs)
             ]
 
             # Add round transitions
@@ -134,14 +207,12 @@ def make(output_config: OutputConfig):
                 make_text_screen(dims,
                                  "Round {}".format(r_i + 1) +
                                  ("\n" + round_config.name
-                                  if round_config.name is not None
-                                  else ""),
+                                  if round_config.name is not None else ""),
                                  TRANSITION_DURATION,
-                                 make_background(stack,
+                                 make_background(stacks[r_i],
                                                  round_config.background,
                                                  dims,
-                                                 TRANSITION_DURATION)
-                                 )
+                                                 TRANSITION_DURATION))
                 for r_i, round_config in enumerate(round_configs)
             ]
             all_video = [None]*(3 * len(rounds))
@@ -181,7 +252,11 @@ def make(output_config: OutputConfig):
             output = crossfade(all_video)
             name = "{}.{}".format(output_name, ext)
             output.write_videofile(
-                name, codec=codec, fps=output_config.fps, threads=4)
+                name,
+                codec=codec,
+                fps=output_config.fps,
+                preset=PRESET,
+            )
 
             # Delete intermediate files
             if output_config.delete:
