@@ -47,7 +47,7 @@ class BeatSection:
 
 
 class BeatMeterConfig:
-    def __init__(self, bmcfg_json: dict, folder_path: os.PathLike):
+    def __init__(self, bmcfg_json: dict):
         data = bmcfg_json["data"]
         self.sections = list(map(
             lambda e: BeatSection(e),
@@ -56,15 +56,13 @@ class BeatMeterConfig:
                 data["content"]["#elems"]
             ))[0]["content"]["#elems"]
         ))
+
         self.fps = data["flyingBeatmeter"
                         if data["flying"] else
                         "waveformBeatmeter"]["frames"]
 
         music_path = unquote(data["audio"]["#elems"][0])
-        if os.path.isabs(music_path):
-            self.music = music_path
-        else:
-            self.music = str(os.path.join(folder_path, music_path))
+        self.music = str(os.path.abspath(music_path))
 
         base_content = list(filter(lambda e: e["title"] == "Base",
                                    data["content"]["#elems"])
@@ -95,6 +93,7 @@ class BeatMeterConfig:
 
 
 class RoundConfig:
+    # pylint: disable=no-member, access-member-before-definition
     ITEMS = {
         "name": {
             "type": str,
@@ -170,7 +169,14 @@ class RoundConfig:
         },
     }
 
-    def __init__(self, config: dict, load=False):
+    def __init__(self, config: dict or str, load=False):
+        if load:
+            if type(config) == str:
+                with open(config) as config_file:
+                    config = yaml.load(config_file)
+            if config["bmcfg"] is not None:
+                self.load_beatmeter_config(config)
+
         try:
             for attribute, validation in self.ITEMS.items():
                 if "default" in validation:
@@ -189,23 +195,31 @@ class RoundConfig:
         if self.name is None:
             self.name = get_random_name()
 
-        if self.bmcfg is not None:
-            self.load_beatmeter_config()
-
         if "bpm" not in config:
             print("WARNING: Round {}, bpm not set, default 120".format(self.name))
 
         if "speed" not in config:
             print("WARNING: Round {}, speed not set, default 3".format(self.name))
 
-    def load_beatmeter_config(self):
-        folder = os.path.dirname(self.bmcfg)
-        with open(self.bmcfg) as bmcfg_json:
-            self.beatmeter_config = BeatMeterConfig(
-                json.load(bmcfg_json), folder)
-        self.music = self.beatmeter_config.music
-        self.bpm = self.beatmeter_config.bpm
-        self.duration = self.beatmeter_config.duration
+    def load_beatmeter_config(self, config: dict):
+        current_folder = os.path.abspath(os.getcwd())
+        bmcfg_filepath = config["bmcfg"]
+        bmcfg_folder = os.path.abspath(os.path.dirname(bmcfg_filepath))
+        bmcfg_filename = os.path.basename(bmcfg_filepath)
+        config["bmcfg"] = str(os.path.join(bmcfg_folder, bmcfg_filename))
+        os.chdir(bmcfg_folder)
+        with open(bmcfg_filename) as bmcfg_json:
+            beatmeter_config = BeatMeterConfig(json.load(bmcfg_json))
+        os.chdir(current_folder)
+        self.beatmeter_config = beatmeter_config
+        config["music"] = beatmeter_config.music
+        config["bpm"] = beatmeter_config.bpm
+        config["duration"] = beatmeter_config.duration
+
+        if "beats" not in config:
+            config["beats"] = str(os.path.join(bmcfg_folder, "beat_track.wav"))
+        if "beatmeter" not in config:
+            config["beatmeter"] = str(os.path.join(bmcfg_folder, "beats"))
 
     def validate(self):
         for item, validation in self.ITEMS.items():
@@ -237,6 +251,7 @@ class RoundConfig:
 
 
 class OutputConfig:
+    # pylint: disable=no-member, access-member-before-definition
     ITEMS = {
         "name": {
             "type": str,
@@ -247,7 +262,7 @@ class OutputConfig:
             "type": float,
             "min": 1,
             "max": 360,
-            "default": 30,
+            "default": 60,
             "help": "output frames per second"
         },
         "xdim": {
@@ -277,6 +292,13 @@ class OutputConfig:
             "default": "round",
             "help": "memory usage before dumping to disk"
         },
+        "threads": {
+            "type": int,
+            "min": 1,
+            "max": 8,
+            "default": 1,
+            "help": "number of active round workers on CPU"
+        },
         "assemble": {
             "type": bool,
             "default": False,
@@ -295,13 +317,13 @@ class OutputConfig:
         "_settings": {
             "type": str,
             "default": "",
-            "help": "override and provide command-line options",
+            "help": "override command-line options with a yaml file",
             "exts": [("YAML files", "*.yaml")]
         },
         "rounds": {
             "type": list,
             "default": [],
-            "help": "rounds"
+            "help": "round configuration yaml files"
         },
     }
 
@@ -309,29 +331,41 @@ class OutputConfig:
         if type(args) != dict:
             args = args.__dict__
 
-        if args["_settings"] != "" and load:
-            with open(args["_settings"]) as settings_file:
-                file_contents = yaml.full_load(settings_file)
+        current_folder = os.path.abspath(os.getcwd())
+        settings_filepath = args["_settings"]
+        if settings_filepath != "" and load:
+            if not os.path.exists(settings_filepath):
+                print("Settings file ({}) not found".format(
+                    settings_filepath
+                ))
+                exit(1)
+            os.chdir(os.path.abspath(os.path.dirname(settings_filepath)))
+            with open(settings_filepath) as settings_filehandle:
+                file_contents = yaml.full_load(settings_filehandle)
         else:
             file_contents = dict()
 
         if type(file_contents) == OutputConfig:
             self.__dict__.update(file_contents.__dict__)
         else:
-            rounds = args["rounds"] if "rounds" in args else []
-            rounds = [RoundConfig(r) if type(r) == dict else r
-                      for r in file_contents.get("rounds", rounds)]
-            file_contents["rounds"] = rounds
             for attribute, validation in self.ITEMS.items():
-                if attribute != "rounds":
-                    args_value = args.get(attribute, validation["default"])
-                    value = file_contents.get(attribute, args_value)
-                else:
-                    value = file_contents["rounds"]
+                value = file_contents.get(attribute, validation["default"])
+                args_value = args.get(attribute, value)
+                if args_value != validation["default"]:
+                    value = args_value  # overwrite settings with cmd args
                 value = None if value is None else validation["type"](value)
+                if attribute == "rounds":
+                    for r_i, r in enumerate(value):
+                        if type(r) == str or type(r) == dict:
+                            settings_folder = os.path.abspath(os.getcwd())
+                            round_folder = os.path.abspath(os.path.dirname(r))
+                            os.chdir(round_folder)
+                            value[r_i] = RoundConfig(r, True)
+                            os.chdir(settings_folder)
                 self.__setattr__(attribute, value)
             if self.name is None:
                 self.name = get_random_name()
+        os.chdir(current_folder)
         try:
             self.validate()
         except ValueError as err:
@@ -359,8 +393,8 @@ class OutputConfig:
                 raise ValueError("round names must be unique: " + r.name)
 
     def save(self):
-        with open(self._settings, "w") as settings_file:
-            yaml.dump(self, settings_file, sort_keys=False)
+        with open(self._settings, "w") as settings_filehandle:
+            yaml.dump(self, settings_filehandle, sort_keys=False)
 
     def copy(self):
         attributes = self.ITEMS.copy()
@@ -406,9 +440,11 @@ def _validate(item: str, data, validation: dict):
 def parse_command_line_args() -> dict:
     parser = argparse.ArgumentParser()
     for attribute, validation in OutputConfig.ITEMS.items():
-        if attribute in ["_settings", "rounds"]:
+        if attribute == "rounds":
             continue
-        short_name = "-" + attribute[0]
+        short_name = "-" + (attribute[1]
+                            if attribute == "_settings"
+                            else attribute[0])
         name = "--" + attribute
         _help = validation["help"]
         _type = validation["type"]
@@ -417,11 +453,14 @@ def parse_command_line_args() -> dict:
         parser.add_argument(short_name, name, help=_help,
                             action=action, default=default)
 
+    parser.add_argument("-e", "--execute", help="Execute directly, without GUI.",
+                        action="store_true", default=False)
+
     parser.add_argument(
-        "_settings",
-        metavar="<YOUR_VIDEO_NAME>_config.yaml",
-        help="settings file",
-        nargs='?',
-        default=OutputConfig.ITEMS["_settings"]["default"])
+        "rounds",
+        metavar="<ROUND_NAME>_config.yaml",
+        help=OutputConfig.ITEMS["rounds"]["help"],
+        nargs='*',
+        default=OutputConfig.ITEMS["rounds"]["default"])
 
     return parser.parse_args()
