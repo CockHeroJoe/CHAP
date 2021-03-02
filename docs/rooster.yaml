@@ -1,14 +1,38 @@
 # Comments like this can be removed or left in
 # NOTE: all file paths should be absolute (starting at C:/ or D:/ in Windows)
 name: Rooster Hero
-assemble: True
+
+# Affect the dimensions of the video.
+# They should match the aspect ratio of all source files
 xdim: 1280
 ydim: 720 # This is 720p widescreen resolution
+# Default: 1920x1080 -> 1080p widescreen
+
+# Affects the framerate of the output video
+fps: # Options: any positive integer (Default: 60)
+  60 # Recommended to avoid beatmeter smudging, otherwise 30 fps
+
+# Affects quality and size. "raw" video is very big for slightly better quality.
+raw: false # Options: [true, false] (Default: false)
+
+# Affects whether intermediate video files (rounds) are deleted after assembly.
+delete: false # Options: [true, false] (Default: false)
+
+# Affects whether rounds are assembled with transitions and credits into video
+assemble: true # Options: [true, false] (Default: false)
+
 # Affects how often videos are saved.
 cache: all # Options: [round, all] (default: round)
-rounds: # Each needs name, speed, cut, bmcfg (plus beats and beatmeter for now), sources (and optionally credits)
-  - # This hyphen indicates the start of the first round
-    name: Domesticated Cocks # Displayed during round transitions
+
+# The filepath of this configuration file, set in program
+# _settings:
+
+# Each NEEDS name, sources
+# Add bmcfg (plus beats and beatmeter, fow now), (and optionally credits)
+# Customize speed, cut, audio_level, if default not desired
+# NOTE: Instead of rounds, you can list filepaths of round_config yaml files
+rounds:
+  - name: Domesticated Cocks # Displayed during round transitions
 
     # Affects how many cuts per bar
     speed: # Options: [1, 2, 3, 4, 5] (default 3)
