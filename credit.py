@@ -77,9 +77,9 @@ class VideoCredit:
                 )
         if self.date is not None:
             try:
-                datetime.datetime.strptime(self.date, "%y.%m.%d")
+                datetime.datetime.strptime(self.date, "%Y.%m.%d")
             except ValueError:
-                raise ValueError("Incorrect data format, should be YYYY-MM-DD")
+                raise ValueError("Incorrect date format, should be YYYY-MM-DD")
 
 
 class RoundCredits:
@@ -102,8 +102,16 @@ class RoundCredits:
             video_credit.validate()
 
 
-def make_credits(credits_data: [RoundCredits], width, color='white', stroke_color='black',
-                 stroke_width=2, font='Impact-Normal', fontsize=60, gap=0):
+def make_credits(
+        credits_data: [RoundCredits],
+        width,
+        color='white',
+        stroke_color='black',
+        stroke_width=2,
+        font='Impact-Normal',
+        fontsize=60,
+        gap=0
+):
     """
 
     Parameters
@@ -177,7 +185,7 @@ def make_credits(credits_data: [RoundCredits], width, color='white', stroke_colo
         texts += [["\n", "\n"]] * 2
 
     # Make two columns for the credits
-    left, right = ("".join(l) for l in zip(*texts))
+    left, right = ("".join(t) for t in zip(*texts))
     left, right = [TextClip(txt, color=color, stroke_color=stroke_color,
                             stroke_width=stroke_width, font=font,
                             fontsize=fontsize, align=al)
