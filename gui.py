@@ -132,7 +132,8 @@ class AbstractGUI():
             box = ttk.Label(frame, textvariable=short_name_var)
             box.grid(row=i, column=1)
             exts = validation["exts"]
-            button = ttk.Button(frame, text="Find" if value is None else "Replace",
+            button = ttk.Button(frame,
+                                text="Find" if value is None else "Replace",
                                 command=find_or_replace)
             button.grid(row=i, column=2)
 
@@ -169,7 +170,11 @@ class GUI(AbstractGUI):
         self.set_name(output_config.name)
         self._settings_path = output_config._settings
         self.window.tk_setPalette(
-            background="grey30", foreground="grey85", selectColor="black", highlightColor="black")
+            background="grey30",
+            foreground="grey85",
+            selectColor="black",
+            highlightColor="black",
+        )
 
         self.menubar = tk.Menu(self.window)
         file_menu = tk.Menu(self.menubar, tearoff=0)
@@ -263,7 +268,12 @@ class GUI(AbstractGUI):
 
 
 class RoundGUI(AbstractGUI):
-    def __init__(self, window: tk.Tk, round_config: RoundConfig = None, set_name=lambda n: None, update=None):
+    def __init__(self,
+                 window: tk.Tk,
+                 round_config: RoundConfig = None,
+                 set_name=lambda n: None,
+                 update=None
+                 ):
         self.window = tk.Toplevel(window)
         self.window.attributes("-topmost", True)
         super().__init__(self.window, round_config or RoundConfig({
