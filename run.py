@@ -1,8 +1,8 @@
 import os
-import random
-import fnmatch
+import sys
 from contextlib import ExitStack, AbstractContextManager
 from threading import Thread
+import gc
 
 from moviepy.audio.AudioClip import CompositeAudioClip
 from moviepy.audio.fx.volumex import volumex
@@ -12,10 +12,9 @@ from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.fx.resize import resize
-from moviepy.video.VideoClip import ColorClip, ImageClip, TextClip, VideoClip
 
 from constants import TRANSITION_DURATION, CREDIT_DISPLAY_TIME
-from cutters import Interleaver, Skipper, Randomizer
+from cutters import Interleaver, Skipper, Randomizer, Sequencer
 from credit import make_credits
 from utils import SourceFile,\
     get_black_clip,\
@@ -23,9 +22,7 @@ from utils import SourceFile,\
     make_text_screen,\
     make_background,\
     crossfade
-from parsing import OutputConfig, RoundConfig
-
-PRESET = "fast"
+from parsing import OutputConfig
 
 
 class StackList(AbstractContextManager):
@@ -73,7 +70,7 @@ def make(output_config: OutputConfig):
 
     if output_config.rounds == []:
         print("ERROR: No round configs provided")
-        exit(1)
+        sys.exit(1)
 
     round_configs = output_config.rounds
     for round_config in round_configs:
@@ -119,7 +116,8 @@ def make(output_config: OutputConfig):
 
             # Assemble audio from music and beats
             audio = None
-            if round_config.music is not None or round_config.beats is not None:
+            if (round_config.music is not None
+                    or round_config.beats is not None):
                 audio = [
                     stack.enter_context(AudioFileClip(clip))
                     for clip in [
@@ -142,6 +140,7 @@ def make(output_config: OutputConfig):
                 "skip": Skipper,
                 "interleave": Interleaver,
                 "randomize": Randomizer,
+                "sequence": Sequencer
             }[round_config.cut]
             cutter = Cutter(output_config, round_config, bmcfg, sources)
             clips = cutter.get_compilation()
@@ -164,36 +163,96 @@ def make(output_config: OutputConfig):
             round_i = round_i.set_duration(round_config.duration)
 
             if output_config.cache == "round":
-                name = get_round_name(output_name, round_config.name, ext)
+                # Save each round video to disk using a worker thread
+                filename = get_round_name(output_name, round_config.name, ext)
 
-                def save_round():
+                def save_round():  # Job for the worker thread
                     round_i.write_videofile(
-                        name,
+                        filename,
                         codec=codec,
                         fps=output_config.fps,
-                        preset=PRESET,
+                        preset="ultrafast",
                     )
-                    stack.close()
+                    stack.close()  # close all video files for this round
 
-                round_config._is_on_disk = True  # TODO: test this
+                round_config._is_on_disk = True
                 thread = Thread(target=save_round, daemon=True)
                 threads.append(thread)
                 thread.start()
 
+                # If too many threads are running, then
                 if len(threads) >= max_threads:
+                    # wait for the first (thread that was started) to finish
                     first, threads = threads[0], threads[1:]
                     print("Waiting for round #{} to finish writing...".format(
                         r_i - max_threads + 2
                     ))
                     first.join()
             else:
-                round_videos.append(round_i)
+                round_videos.append(round_i)  # Store round in memory instead
 
+        print("All Rounds prepared")
+        if threads != []:
+            print("Waiting for all rounds to finish writing...")
         for thread in threads:
             thread.join()
 
+        gc.collect()  # Free as much memory as possible
+
+        # Add round transitions
+        print("Assembling Round transitions...")
+        dims = (output_config.xdim, output_config.ydim)
+        round_transitions = [
+            make_text_screen(dims,
+                             "Round {}".format(r_i + 1) +
+                             ("\n" + round_config.name
+                                 if round_config.name is not None else ""),
+                             TRANSITION_DURATION,
+                             make_background(stacks[r_i],
+                                             round_config.background,
+                                             dims))
+            for r_i, round_config in enumerate(round_configs)
+        ]
+
+        # Add title
+        # TODO: add output_config.title_duration
+        #       and add output_config.title_background
+        #       and round_config.transition_duration
+        #       and modify background => round_config.transition_background
+        # TODO: test backgrounds, add documentation in README
+        title_text = "Cock Hero\n"
+        title = make_text_screen(dims, title_text)
+        title_text += output_name
+        title2 = make_text_screen(dims, title_text)
+        title_clips = [
+            get_black_clip(dims),
+            title,
+            title2
+        ]
+
+        # Add credits, if data is available
+        credits_data_list = [
+            r.credits for r in round_configs
+            if r.credits is not None
+            and (r.credits.audio is not [] or r.credits.video is not [])
+        ]
+        if credits_data_list is not [] and False:
+            print("Assembling Credits...")
+            credits_video = make_credits(credits_data_list,
+                                         0.70 * dims[0],
+                                         stroke_color=None,
+                                         gap=30)
+            lines_per_second = dims[1] / CREDIT_DISPLAY_TIME
+            def scroll(t): return ("center", -lines_per_second * t)
+            credits_video = credits_video.set_position(scroll)
+            credits_duration = credits_video.h / lines_per_second
+            credits_video = credits_video.set_duration(credits_duration)
+
         if output_config.assemble:
+            print("Beginning Final Assembly")
+
             # Reload rounds from output files, if not still in memory
+            print("Reloading Rounds...")
             rounds = [
                 stacks[r_i].enter_context(VideoFileClip(
                     get_round_name(output_name, round_config.name, ext)))
@@ -201,52 +260,15 @@ def make(output_config: OutputConfig):
                 for r_i, round_config in enumerate(round_configs)
             ]
 
-            # Add round transitions
-            dims = (output_config.xdim, output_config.ydim)
-            round_transitions = [
-                make_text_screen(dims,
-                                 "Round {}".format(r_i + 1) +
-                                 ("\n" + round_config.name
-                                  if round_config.name is not None else ""),
-                                 TRANSITION_DURATION,
-                                 make_background(stacks[r_i],
-                                                 round_config.background,
-                                                 dims,
-                                                 TRANSITION_DURATION))
-                for r_i, round_config in enumerate(round_configs)
-            ]
+            # Gather together all the videos
             all_video = [None]*(3 * len(rounds))
             all_video[::3] = [get_black_clip(dims) for _ in range(len(rounds))]
             all_video[1::3] = round_transitions
             all_video[2::3] = rounds
-
-            # Add title
-            title_text = "Cock Hero\n"
-            # TODO: add output_config.title_duration
-            #       and add output_config.title_background
-            #       and round_config.transition_duration
-            #       and modify background => round_config.transition_background
-            # TODO: test backgrounds, add help in README
-            title = make_text_screen(dims, title_text, TRANSITION_DURATION)
-            title_text += output_name
-            title2 = make_text_screen(dims, title_text, TRANSITION_DURATION)
-            all_video = [title, title2] + all_video
-
-            # Add credits
-            credits_data_list = [
-                r.credits for r in round_configs
-                if r.credits is not None
-                and (r.credits.audio is not [] or r.credits.video is not [])
+            all_video = title_clips + all_video + [
+                get_black_clip(dims),
+                credits_video
             ]
-            if credits_data_list is not []:
-                credits_video = make_credits(
-                    credits_data_list, 0.70 * dims[0], stroke_color=None, gap=30)
-                lines_per_second = dims[1] / CREDIT_DISPLAY_TIME
-                def scroll(t): return ("center", -lines_per_second * t)
-                credits_video = credits_video.set_position(scroll)
-                credits_duration = credits_video.h / lines_per_second
-                credits_video = credits_video.set_duration(credits_duration)
-                all_video += [get_black_clip(dims), credits_video]
 
             # Output final video
             output = crossfade(all_video)
@@ -255,12 +277,60 @@ def make(output_config: OutputConfig):
                 name,
                 codec=codec,
                 fps=output_config.fps,
-                preset=PRESET,
+                preset="slow",
+                threads=4
             )
 
-            # Delete intermediate files
             if output_config.delete:
+                # delete intermediate files
+                print("Deleting Files")
                 for round_config in round_configs:
                     if round_config._is_on_disk:
                         os.remove(get_round_name(
                             output_name, round_config.name, ext))
+        else:
+            threads = []
+            thread = Thread(target=lambda: crossfade(
+                title_clips
+            ).write_videofile(
+                "{}_Title.mp4".format(output_name),
+                codec=codec,
+                fps=output_config.fps,
+                preset="slow",
+            ))
+            threads.append(thread)
+            thread.start()
+
+            for r_i, transition in enumerate(round_transitions):
+                thread = Thread(target=lambda: transition.write_videofile(
+                    get_round_name(
+                        output_name,
+                        round_configs[r_i].name + "_Title",
+                        ext),
+                    codec=codec,
+                    fps=output_config.fps,
+                    preset="slow",
+                ))
+                threads.append(thread)
+                thread.start()
+
+                # If too many threads are running, then
+                if len(threads) >= max_threads:
+                    # wait for the first (thread that was started) to finish
+                    first, threads = threads[0], threads[1:]
+                    print("Waiting for round #{} to finish writing...".format(
+                        r_i - max_threads + 2
+                    ))
+                    first.join()
+
+            thread = Thread(target=lambda: credits_video.write_videofile(
+                "{}_Credits.{}".format(output_name, ext),
+                codec=codec,
+                fps=output_config.fps,
+                preset="slow",
+            ))
+            threads.append(thread)
+            thread.start()
+
+            for thread in threads:
+                thread.join()
