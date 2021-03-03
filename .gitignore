@@ -140,3 +140,7 @@ dmypy.json
 
 # Editor Settings
 .vscode
+
+# Compiled executables and installers
+bin/
+obj/
