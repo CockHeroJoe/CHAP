@@ -47,9 +47,9 @@ class _AbstractCutter(metaclass=ABCMeta):
         current_time = 0.0
         frame_time = 1.0 / self.output_config.fps
         while duration - current_time > frame_time:
-            # Select a random clip length that is a whole multiple of beats long
+            # Select random clip length that is a whole multiple of beats long
             if self.bmcfg and len(sections) >= 1:
-                # Use beatmeter generator config to time cuts to beats perfectly
+                # Use beatmeter generator config: time cuts to beats perfectly
                 if subsection_index == 0:
                     # compute number of subsections in this pattern and length
                     section = sections[section_index]
@@ -75,11 +75,11 @@ class _AbstractCutter(metaclass=ABCMeta):
                     length += sections[0].start
                 elif (section_index == len(sections) - 1
                         and subsection_index == num_subsections - 1):
-                    # Last cut in round is extended to match duration of Base track
+                    # Last cut in round extended to match Base track length
                     length = duration - current_time
                 elif subsection_index == num_subsections - 1:
-                    # Last cut per section is adjusted to account for drift due to
-                    # imperfect beat timings given in beatmeter config
+                    # Last cut per section is adjusted to account for drift
+                    # due to imperfect beat timings given in beatmeter config
                     length = sections[section_index + 1].start - current_time
                 subsection_index += 1
             else:
@@ -89,7 +89,8 @@ class _AbstractCutter(metaclass=ABCMeta):
                 current_max_multiple = int(
                     (1 - 0.66 * current_time / duration) * max_multiple)
                 length = seconds_per_beat * max(4, round(
-                    random.randrange(current_min_multiple, current_max_multiple)))
+                    random.randrange(current_min_multiple,
+                                     current_max_multiple)))
 
             # Cut multiple clips from various sources
             out_clips = []
@@ -184,6 +185,30 @@ class Randomizer(_AbstractRandomSelector):
                 offset, source.clip.duration - length * 2 - offset)
 
 
+class Sequencer(_AbstractCutter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._index = 0
+
+    def get_source_clip_index(self, length: float) -> int:
+        source = self.sources[self._index]
+        if source.start + length <= source.clip.duration:
+            return self._index
+
+        print("Warning: not enough source material (or buggy code)")
+        source.start /= 2
+        return self.get_source_clip_index(length)
+
+    def advance_sources(self, length: float, current_time: float, i: int):
+        source = self.sources[i]
+        current_progress = (current_time + length) / self.round_config.duration
+        time_in_source = current_progress * source.clip.duration
+        source.start = random.gauss(time_in_source, self.versions * length)
+        source.start = max(SourceFile.get_random_start(), source.start)
+        source.start = min(source.clip.duration - length * 2, source.start)
+        self._index += 1
+
+
 class Skipper(_AbstractCutter):
     def get_source_clip_index(self, length: float) -> int:
         for i, source in enumerate(self.sources):
@@ -198,10 +223,11 @@ class Skipper(_AbstractCutter):
     def advance_sources(self, length: float, current_time: float, i: int):
         source = self.sources[i]
         length_fraction = source.clip.duration / self.all_sources_length
-        completed_fraction = (sum(
-            map(lambda s: s.clip.duration, self.sources[:i]))
-            / self.all_sources_length)
-        current_progress = current_time / self.round_config.duration
+        completed_fraction = sum(map(
+            lambda s: s.clip.duration,
+            self.sources[:i]))
+        completed_fraction /= self.all_sources_length
+        current_progress = (current_time + length) / self.round_config.duration
         current_progress_in_source = ((current_progress - completed_fraction)
                                       / length_fraction)
         time_in_source = current_progress_in_source * source.clip.duration
