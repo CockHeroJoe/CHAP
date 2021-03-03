@@ -1,4 +1,5 @@
 import os
+import sys
 import yaml
 import argparse
 import random
@@ -129,7 +130,7 @@ class RoundConfig:
         "cut": {
             "type": str,
             "default": "interleave",
-            "choices": ["skip", "interleave", "randomize"],
+            "choices": ["skip", "interleave", "randomize", "sequence"],
         },
         "beats": {
             "type": str,
@@ -187,19 +188,21 @@ class RoundConfig:
                 self.__setattr__(attribute, value)
         except ValueError as err:
             print("ERROR: Round {} invalid value: {}".format(self.name, err))
-            exit(1)
+            sys.exit(1)
         except KeyError as err:
             print("ERROR: Round {} missing field: {}".format(self.name, err))
-            exit(1)
+            sys.exit(1)
 
         if self.name is None:
             self.name = get_random_name()
 
         if "bpm" not in config:
-            print("WARNING: Round {}, bpm not set, default 120".format(self.name))
+            print("WARNING: Round {}, bpm not set, default 120".format(
+                self.name))
 
         if "speed" not in config:
-            print("WARNING: Round {}, speed not set, default 3".format(self.name))
+            print("WARNING: Round {}, speed not set, default 3".format(
+                self.name))
 
     def load_beatmeter_config(self, config: dict):
         current_folder = os.path.abspath(os.getcwd())
@@ -338,7 +341,7 @@ class OutputConfig:
                 print("Settings file ({}) not found".format(
                     settings_filepath
                 ))
-                exit(1)
+                sys.exit(1)
             os.chdir(os.path.abspath(os.path.dirname(settings_filepath)))
             with open(settings_filepath) as settings_filehandle:
                 file_contents = yaml.full_load(settings_filehandle)
@@ -370,10 +373,10 @@ class OutputConfig:
             self.validate()
         except ValueError as err:
             print("ERROR: Settings invalid value: {}".format(err))
-            exit(1)
+            sys.exit(1)
         except KeyError as err:
             print("ERROR: Settings missing field: {}".format(err))
-            exit(1)
+            sys.exit(1)
 
     def validate(self):
         for item, validation in self.ITEMS.items():
@@ -403,7 +406,7 @@ class OutputConfig:
 
 
 def _validate(item: str, data, validation: dict):
-    if data == None:
+    if data is None:
         return
     if type(data) != validation["type"]:
         raise ValueError("wrong data type for {} ({}); must be {}".format(
@@ -429,10 +432,10 @@ def _validate(item: str, data, validation: dict):
                 d.validate()
             except ValueError as err:
                 print("ERROR: Round {} invalid value: {}".format(i + 1, err))
-                exit(1)
+                sys.exit(1)
             except KeyError as err:
                 print("ERROR: Round {} missing field: {}".format(i + 1, err))
-                exit(1)
+                sys.exit(1)
     elif item == "credits":
         data.validate()
 
@@ -453,8 +456,11 @@ def parse_command_line_args() -> dict:
         parser.add_argument(short_name, name, help=_help,
                             action=action, default=default)
 
-    parser.add_argument("-e", "--execute", help="Execute directly, without GUI.",
-                        action="store_true", default=False)
+    parser.add_argument(
+        "-e", "--execute",
+        help="Execute directly, without GUI.",
+        action="store_true",
+        default=False)
 
     parser.add_argument(
         "rounds",
