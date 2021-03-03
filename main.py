@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 import os
+import sys
 
 from moviepy.config import change_settings as moviepy_change_settings
 
@@ -20,7 +21,7 @@ if os.name == "nt":
     except OSError:
         print(OSError)
         print("\nIs ImageMagic Installed?\n")
-        exit(1)
+        sys.exit(1)
 
 
 def main():
