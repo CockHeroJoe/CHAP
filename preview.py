@@ -1,12 +1,9 @@
-import numpy as np
 import PIL.Image
 import PIL.ImageTk
-import threading
 import time
 import tkinter
 import math
 # from moviepy.decorators import convert_masks_to_RGB, requires_duration
-from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.VideoClip import VideoClip
 from moviepy.video.compositing.CompositeVideoClip import clips_array
 from moviepy.video.fx.resize import resize
