@@ -13,7 +13,7 @@ from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.fx.resize import resize
 
-from constants import TRANSITION_DURATION, CREDIT_DISPLAY_TIME
+from constants import TRANSITION_DURATION
 from cutters import Interleaver, Skipper, Randomizer, Sequencer
 from credit import make_credits
 from utils import SourceFile,\
@@ -238,31 +238,28 @@ def make(output_config: OutputConfig):
             and (r.credits.audio is not [] or r.credits.video is not [])
         ]
         credits_video_thread = None
-        if credits_data_list is not [] and False:
+        if credits_data_list is not []:
             print("Assembling Credits...")
             credits_video = make_credits(credits_data_list,
-                                         0.70 * dims[0],
+                                         dims[0],
+                                         dims[1],
                                          stroke_color=None,
                                          gap=30)
-            lines_per_second = dims[1] / CREDIT_DISPLAY_TIME
 
-            def scroll(t): return ("center", -lines_per_second * t)
-            credits_video = credits_video.set_position(scroll)
-            credits_duration = credits_video.h / lines_per_second
-            credits_video = credits_video.set_duration(credits_duration)
-
+            credits_video_filename = "{}_Credits.{}".format(output_name, ext)
             if output_config.cache != "all":
-                credits_video_thread = Thread(
-                    target=lambda: credits_video.write_videofile(
-                        "{}_Credits.{}".format(output_name, ext),
-                        codec=codec,
-                        fps=output_config.fps,
-                        preset="slow",
-                    ))
-                credits_video_thread.start()
+                if not os.path.exists(credits_video_filename):
+                    credits_video_thread = Thread(
+                        target=lambda: credits_video.write_videofile(
+                            credits_video_filename,
+                            codec=codec,
+                            fps=output_config.fps,
+                            preset="slow",
+                        ))
+                    credits_video_thread.start()
 
-                if max_threads <= 1:
-                    credits_video_thread.join()
+                    if max_threads <= 1:
+                        credits_video_thread.join()
 
         if output_config.assemble and output_config.cache == "all":
             print("Beginning Final Assembly")
@@ -347,6 +344,7 @@ def make(output_config: OutputConfig):
                         first.join()
 
     if output_config.assemble:
+        # TODO: Assemble this list as files are output/found
         main_title_filename = "{}_Title.{}".format(output_name, ext)
         intermediate_filenames = [main_title_filename]
         for r_i, round_config in enumerate(round_configs):
@@ -357,7 +355,6 @@ def make(output_config: OutputConfig):
             round_filename = get_round_name(output_name, round_name, ext)
             intermediate_filenames.append(round_filename)
         if credits_data_list is not []:
-            credits_video_filename = "{}_Credits.{}".format(output_name, ext)
             intermediate_filenames.append(credits_video_filename)
 
         if output_config.cache != "all":

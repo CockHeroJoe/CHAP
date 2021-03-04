@@ -1,9 +1,12 @@
+from datetime import datetime
 
+from moviepy import Clip
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 from moviepy.video.fx.resize import resize
 from moviepy.video.VideoClip import ImageClip, TextClip
 
-import datetime
+from constants import CREDIT_DISPLAY_TIME
+from utils import crossfade, make_text_screen
 
 
 class AudioCredit:
@@ -46,7 +49,7 @@ class VideoCredit:
         fields = [
             f for f in [
                 self.studio,
-                self.date,
+                datetime.strptime(self.date, "%Y.%m.%d").strftime("%B %d, %Y"),
                 self.title,
                 *self.performers
             ] if f is not None
@@ -77,7 +80,7 @@ class VideoCredit:
                 )
         if self.date is not None:
             try:
-                datetime.datetime.strptime(self.date, "%Y.%m.%d")
+                datetime.strptime(self.date, "%Y.%m.%d")
             except ValueError:
                 raise ValueError("Incorrect date format, should be YYYY-MM-DD")
 
@@ -102,16 +105,81 @@ class RoundCredits:
             video_credit.validate()
 
 
+def _make_credit_texts(credit: str, first=""):
+    num_lines = credit.count("\n")
+    return [
+        [first, credit],
+        *([["\n", ""]] * num_lines),
+        ["\n", "\n"]
+    ]
+
+
+def _make_round_credits(
+    round_credits: RoundCredits,
+    round_index: int,
+    width: int,
+    height: int,
+    color: str = 'white',
+    stroke_color: str = 'black',
+    stroke_width: str = 2,
+    font: str = 'Impact-Normal',
+    fontsize: int = 60,
+    gap: int = 0
+) -> Clip:
+    texts = []
+    texts += [["\n", "\n"]] * 16
+    if round_credits.audio is not []:
+        texts += _make_credit_texts(
+            str(round_credits.audio[0]),
+            "ROUND {} MUSIC".format(round_index + 1))
+        for audio_credit in round_credits.audio[1:]:
+            texts += _make_credit_texts(str(audio_credit))
+    if round_credits.video is not []:
+        texts += _make_credit_texts(
+            str(round_credits.video[0]),
+            "ROUND {} VIDEOS".format(round_index + 1))
+        for video_credit in round_credits.video[1:]:
+            texts += _make_credit_texts(str(video_credit))
+    texts += [["\n", "\n"]] * 2
+
+    # Make two columns for the credits
+    left, right = ("".join(t) for t in zip(*texts))
+    left, right = [TextClip(txt, color=color, stroke_color=stroke_color,
+                            stroke_width=stroke_width, font=font,
+                            fontsize=fontsize, align=al)
+                   for txt, al in [(left, 'East'), (right, 'West')]]
+    # Combine the columns
+    cc = CompositeVideoClip([left, right.set_position((left.w + gap, 0))],
+                            size=(left.w + right.w + gap, right.h),
+                            bg_color=None)
+
+    scaled = resize(cc, width=width)  # Scale to the required size
+
+    # Transform the whole credit clip into an ImageClip
+    credits_video = ImageClip(scaled.get_frame(0))
+    mask = ImageClip(scaled.mask.get_frame(0), ismask=True)
+
+    lines_per_second = height / CREDIT_DISPLAY_TIME
+
+    def scroll(t): return ("center", -lines_per_second * t)
+    credits_video = credits_video.set_position(scroll)
+    credits_duration = credits_video.h / lines_per_second
+    credits_video = credits_video.set_duration(credits_duration)
+
+    return credits_video.set_mask(mask)
+
+
 def make_credits(
         credits_data: [RoundCredits],
-        width,
-        color='white',
-        stroke_color='black',
-        stroke_width=2,
-        font='Impact-Normal',
-        fontsize=60,
-        gap=0
-):
+        width: int,
+        height: int,
+        color: str = 'white',
+        stroke_color: str = 'black',
+        stroke_width: str = 2,
+        font: str = 'Impact-Normal',
+        fontsize: int = 60,
+        gap: int = 0
+) -> Clip:
     """
 
     Parameters
@@ -158,50 +226,25 @@ def make_credits(
                 Music Supervisor    JEAN DIDIER
 
     """
-    def make_credit_texts(credit: str, first=""):
-        num_lines = credit.count("\n")
-        return [
-            [first, credit],
-            *([["\n", ""]] * num_lines),
-            ["\n", "\n"]
-        ]
-
-    texts = []
-    texts += [["\n", "\n"]] * 16
-    for r_i in range(len(credits_data)):
-        round_credits = credits_data[r_i]
-        if round_credits.audio is not []:
-            texts += make_credit_texts(
-                str(round_credits.audio[0]),
-                "ROUND {} MUSIC".format(r_i + 1))
-            for audio_credit in round_credits.audio[1:]:
-                texts += make_credit_texts(str(audio_credit))
-        if round_credits.video is not []:
-            texts += make_credit_texts(
-                str(round_credits.video[0]),
-                "ROUND {} VIDEOS".format(r_i + 1))
-            for video_credit in round_credits.video[1:]:
-                texts += make_credit_texts(str(video_credit))
-        texts += [["\n", "\n"]] * 2
-
-    # Make two columns for the credits
-    left, right = ("".join(t) for t in zip(*texts))
-    left, right = [TextClip(txt, color=color, stroke_color=stroke_color,
-                            stroke_width=stroke_width, font=font,
-                            fontsize=fontsize, align=al)
-                   for txt, al in [(left, 'East'), (right, 'West')]]
-    # Combine the columns
-    cc = CompositeVideoClip([left, right.set_position((left.w + gap, 0))],
-                            size=(left.w + right.w + gap, right.h),
-                            bg_color=None)
-
-    scaled = resize(cc, width=width)  # Scale to the required size
-
-    # Transform the whole credit clip into an ImageClip
-    imclip = ImageClip(scaled.get_frame(0))
-    amask = ImageClip(scaled.mask.get_frame(0), ismask=True)
-
-    return imclip.set_mask(amask)
+    credits_videos = []
+    for round_index, round_credits in enumerate(credits_data):
+        credits_videos.append(_make_round_credits(
+            round_credits,
+            round_index,
+            width * 0.7,
+            height,
+            color=color,
+            stroke_color=stroke_color,
+            stroke_width=stroke_width,
+            font=font,
+            fontsize=fontsize,
+            gap=gap
+        ))
+    credits_intro = make_text_screen(
+        (width, height),
+        "Congratulations!",
+    )
+    return crossfade([credits_intro, *credits_videos])
 
 
 def _apply_to_leaves(tree, method) -> dict:
