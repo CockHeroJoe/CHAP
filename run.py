@@ -182,9 +182,9 @@ def make(output_config: OutputConfig):
 
                 # If too many threads are running, then
                 if len(threads) >= max_threads:
-                    # wait for the first (thread that was started) to finish
+                    # wait for first (thread that was started) to finish
                     first, threads = threads[0], threads[1:]
-                    print("Waiting for round #{} to finish writing...".format(
+                    print("Waiting for round #{} to finish...".format(
                         r_i - max_threads + 2
                     ))
                     first.join()
@@ -193,7 +193,7 @@ def make(output_config: OutputConfig):
 
         print("All Rounds prepared")
         if threads != []:
-            print("Waiting for all rounds to finish writing...")
+            print("Waiting for all rounds to finish...")
         for thread in threads:
             thread.join()
 
@@ -237,8 +237,8 @@ def make(output_config: OutputConfig):
             if r.credits is not None
             and (r.credits.audio is not [] or r.credits.video is not [])
         ]
-        credits_video = None
-        if credits_data_list is not []:
+        credits_video_thread = None
+        if credits_data_list is not [] and False:
             print("Assembling Credits...")
             credits_video = make_credits(credits_data_list,
                                          0.70 * dims[0],
@@ -252,17 +252,17 @@ def make(output_config: OutputConfig):
             credits_video = credits_video.set_duration(credits_duration)
 
             if output_config.cache != "all":
-                credits_thread = Thread(
+                credits_video_thread = Thread(
                     target=lambda: credits_video.write_videofile(
                         "{}_Credits.{}".format(output_name, ext),
                         codec=codec,
                         fps=output_config.fps,
                         preset="slow",
                     ))
-                credits_thread.start()
+                credits_video_thread.start()
 
                 if max_threads <= 1:
-                    credits_thread.join()
+                    credits_video_thread.join()
 
         if output_config.assemble and output_config.cache == "all":
             print("Beginning Final Assembly")
@@ -281,10 +281,12 @@ def make(output_config: OutputConfig):
             all_video[::3] = [get_black_clip(dims) for _ in range(len(rounds))]
             all_video[1::3] = round_transitions
             all_video[2::3] = rounds
-            all_video = title_clips + all_video + [
-                get_black_clip(dims),
-                credits_video
-            ]
+            all_video = title_clips + all_video
+            if credits_data_list is not []:
+                all_video += [
+                    get_black_clip(dims),
+                    credits_video
+                ]
 
             # Output final video
             output = crossfade(all_video)
@@ -296,65 +298,96 @@ def make(output_config: OutputConfig):
                 preset="slow",
                 threads=4
             )
-        elif output_config.assemble and False:
+        elif output_config.assemble:
             print("Writing Round Transitions and Main Title")
 
-            main_title_thread = Thread(
-                target=lambda: crossfade(title_clips).write_videofile(
-                    "{}_Title.mp4".format(output_name),
-                    codec=codec,
-                    fps=output_config.fps,
-                    preset="slow",
-                ))
-
-            if max_threads <= 1 and credits_video is not None:
-                credits_thread.join()
-            main_title_thread.start()
-            if max_threads <= 1:
-                main_title_thread.join()
-
-            threads = []
-            for r_i, transition in enumerate(round_transitions):
-                def write_round_intro():
-                    transition.write_videofile(
-                        get_round_name(
-                            output_name,
-                            round_configs[r_i].name + "_Title",
-                            ext),
+            # TODO: If they exist, don't remake them
+            main_title_filename = "{}_Title.{}".format(output_name, ext)
+            main_title_thread = None
+            if not os.path.exists(main_title_filename):
+                main_title_thread = Thread(
+                    target=lambda: crossfade(title_clips).write_videofile(
+                        main_title_filename,
                         codec=codec,
                         fps=output_config.fps,
                         preset="slow",
-                    )
-                thread = Thread(target=write_round_intro)
-                threads.append(thread)
-                thread.start()
-
-                # If too many threads are running, then
-                if len(threads) >= max_threads:
-                    # wait for the first (thread that was started) to finish
-                    first, threads = threads[0], threads[1:]
-                    print("Waiting for intro #{} to finish writing...".format(
-                        r_i - max_threads + 2
                     ))
-                    first.join()
+                if max_threads <= 1 and credits_video_thread is not None:
+                    credits_video_thread.join()
+                main_title_thread.start()
+                if max_threads <= 1:
+                    main_title_thread.join()
+
+            threads = []
+            for r_i, transition in enumerate(round_transitions):
+                round_title_filename = get_round_name(
+                    output_name,
+                    round_configs[r_i].name + "_Title",
+                    ext)
+
+                if not os.path.exists(round_title_filename):
+                    def write_round_intro():
+                        transition.write_videofile(
+                            round_title_filename,
+                            codec=codec,
+                            fps=output_config.fps,
+                            preset="slow",
+                        )
+
+                    thread = Thread(target=write_round_intro)
+                    threads.append(thread)
+                    thread.start()
+                    # If too many threads are running, then
+                    if len(threads) >= max_threads:
+                        # wait for first (thread that was started) to finish
+                        first, threads = threads[0], threads[1:]
+                        print("Waiting for intro #{} to finish...".format(
+                            r_i - max_threads + 2
+                        ))
+                        first.join()
 
     if output_config.assemble:
+        main_title_filename = "{}_Title.{}".format(output_name, ext)
+        intermediate_filenames = [main_title_filename]
+        for r_i, round_config in enumerate(round_configs):
+            round_name = round_config.name
+            round_title_filename = get_round_name(
+                output_name, "{}_Title".format(round_name), ext)
+            intermediate_filenames.append(round_title_filename)
+            round_filename = get_round_name(output_name, round_name, ext)
+            intermediate_filenames.append(round_filename)
+        if credits_data_list is not []:
+            credits_video_filename = "{}_Credits.{}".format(output_name, ext)
+            intermediate_filenames.append(credits_video_filename)
+
         if output_config.cache != "all":
-            print("Beginning Final Assembly")
-            # main_title_thread.join()
-            if credits_video is not None:
-                credits_thread.join()
+            print("Waiting for all parts to finish...")
+            if main_title_thread is not None:
+                main_title_thread.join()
+            if credits_video_thread is not None:
+                credits_video_thread.join()
             for thread in threads:
                 thread.join()
+            print("Beginning final assembly")
 
-            # TODO: FFMpeg concat
-            os.system(
-                "ffmpeg -f concat -y -safe 0 -i input.txt -c copy output.mp4")
+            # TODO: Don't use inputs.txt intermediate file
+            filelist_filename = "inputs.txt"
+            with open(filelist_filename, "w") as filelist_handle:
+                filelist_handle.writelines([
+                    "file '{}'\n".format(intermediate_filename)
+                    for intermediate_filename in intermediate_filenames
+                ])
+                intermediate_filenames.append(filelist_filename)
+            command = "ffmpeg {} {} -c copy {}".format(
+                "-v quiet -stats -f concat -y -safe 0",
+                "-i " + filelist_filename,
+                output_name + "." + ext
+            )
+            os.system(command)
 
         if output_config.delete:
             # delete intermediate files
             print("Deleting Files")
-            for round_config in round_configs:
-                if round_config._is_on_disk:
-                    os.remove(get_round_name(
-                        output_name, round_config.name, ext))
+            for intermediate_filename in intermediate_filenames:
+                if os.path.exists(intermediate_filename):
+                    os.remove(intermediate_filename)
