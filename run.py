@@ -220,6 +220,7 @@ def make(output_config: OutputConfig):
         #       and round_config.transition_duration
         #       and modify background => round_config.transition_background
         # TODO: test backgrounds, add documentation in README
+        print("Assembling Main Title...")
         title_text = "Cock Hero\n"
         title = make_text_screen(dims, title_text)
         title_text += output_name
@@ -236,19 +237,34 @@ def make(output_config: OutputConfig):
             if r.credits is not None
             and (r.credits.audio is not [] or r.credits.video is not [])
         ]
-        if credits_data_list is not [] and False:
+        credits_video = None
+        if credits_data_list is not []:
             print("Assembling Credits...")
             credits_video = make_credits(credits_data_list,
                                          0.70 * dims[0],
                                          stroke_color=None,
                                          gap=30)
             lines_per_second = dims[1] / CREDIT_DISPLAY_TIME
+
             def scroll(t): return ("center", -lines_per_second * t)
             credits_video = credits_video.set_position(scroll)
             credits_duration = credits_video.h / lines_per_second
             credits_video = credits_video.set_duration(credits_duration)
 
-        if output_config.assemble:
+            if output_config.cache != "all":
+                credits_thread = Thread(
+                    target=lambda: credits_video.write_videofile(
+                        "{}_Credits.{}".format(output_name, ext),
+                        codec=codec,
+                        fps=output_config.fps,
+                        preset="slow",
+                    ))
+                credits_thread.start()
+
+                if max_threads <= 1:
+                    credits_thread.join()
+
+        if output_config.assemble and output_config.cache == "all":
             print("Beginning Final Assembly")
 
             # Reload rounds from output files, if not still in memory
@@ -280,37 +296,36 @@ def make(output_config: OutputConfig):
                 preset="slow",
                 threads=4
             )
+        elif output_config.assemble and False:
+            print("Writing Round Transitions and Main Title")
 
-            if output_config.delete:
-                # delete intermediate files
-                print("Deleting Files")
-                for round_config in round_configs:
-                    if round_config._is_on_disk:
-                        os.remove(get_round_name(
-                            output_name, round_config.name, ext))
-        else:
-            threads = []
-            thread = Thread(target=lambda: crossfade(
-                title_clips
-            ).write_videofile(
-                "{}_Title.mp4".format(output_name),
-                codec=codec,
-                fps=output_config.fps,
-                preset="slow",
-            ))
-            threads.append(thread)
-            thread.start()
-
-            for r_i, transition in enumerate(round_transitions):
-                thread = Thread(target=lambda: transition.write_videofile(
-                    get_round_name(
-                        output_name,
-                        round_configs[r_i].name + "_Title",
-                        ext),
+            main_title_thread = Thread(
+                target=lambda: crossfade(title_clips).write_videofile(
+                    "{}_Title.mp4".format(output_name),
                     codec=codec,
                     fps=output_config.fps,
                     preset="slow",
                 ))
+
+            if max_threads <= 1 and credits_video is not None:
+                credits_thread.join()
+            main_title_thread.start()
+            if max_threads <= 1:
+                main_title_thread.join()
+
+            threads = []
+            for r_i, transition in enumerate(round_transitions):
+                def write_round_intro():
+                    transition.write_videofile(
+                        get_round_name(
+                            output_name,
+                            round_configs[r_i].name + "_Title",
+                            ext),
+                        codec=codec,
+                        fps=output_config.fps,
+                        preset="slow",
+                    )
+                thread = Thread(target=write_round_intro)
                 threads.append(thread)
                 thread.start()
 
@@ -318,19 +333,28 @@ def make(output_config: OutputConfig):
                 if len(threads) >= max_threads:
                     # wait for the first (thread that was started) to finish
                     first, threads = threads[0], threads[1:]
-                    print("Waiting for round #{} to finish writing...".format(
+                    print("Waiting for intro #{} to finish writing...".format(
                         r_i - max_threads + 2
                     ))
                     first.join()
 
-            thread = Thread(target=lambda: credits_video.write_videofile(
-                "{}_Credits.{}".format(output_name, ext),
-                codec=codec,
-                fps=output_config.fps,
-                preset="slow",
-            ))
-            threads.append(thread)
-            thread.start()
-
+    if output_config.assemble:
+        if output_config.cache != "all":
+            print("Beginning Final Assembly")
+            # main_title_thread.join()
+            if credits_video is not None:
+                credits_thread.join()
             for thread in threads:
                 thread.join()
+
+            # TODO: FFMpeg concat
+            os.system(
+                "ffmpeg -f concat -y -safe 0 -i input.txt -c copy output.mp4")
+
+        if output_config.delete:
+            # delete intermediate files
+            print("Deleting Files")
+            for round_config in round_configs:
+                if round_config._is_on_disk:
+                    os.remove(get_round_name(
+                        output_name, round_config.name, ext))
