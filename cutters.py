@@ -207,6 +207,8 @@ class Sequencer(_AbstractCutter):
         source.start = max(SourceFile.get_random_start(), source.start)
         source.start = min(source.clip.duration - length * 2, source.start)
         self._index += 1
+        if self._index >= len(self.sources):
+            self._index = 0
 
 
 class Skipper(_AbstractCutter):
@@ -234,13 +236,3 @@ class Skipper(_AbstractCutter):
         source.start = max(SourceFile.get_random_start(),
                            random.gauss(time_in_source,
                                         self.versions * length))
-        """
-        length_fraction = source.clip.duration / self.all_sources_length
-        total_contribution = length_fraction * self.round_config.duration
-        total_contribution *= self.versions
-        assert total_contribution <= source.clip.duration
-        skipped_amount = source.clip.duration - total_contribution
-        num_cuts_expected = total_contribution / length
-        expected_skip = skipped_amount / num_cuts_expected
-        source.start += random.uniform(expected_skip / 2, expected_skip)
-        """
