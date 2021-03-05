@@ -6,7 +6,7 @@ from moviepy.video.fx.resize import resize
 from moviepy.video.VideoClip import ImageClip, TextClip
 
 from constants import CREDIT_DISPLAY_TIME
-from utils import crossfade, make_text_screen
+from utils import crossfade, get_black_clip
 
 
 class AudioCredit:
@@ -29,10 +29,11 @@ class AudioCredit:
     def validate(self):
         if type(self.artist) != str:
             raise ValueError(
-                "wrong data type for artist ({self.artist}), must be str")
+                "wrong data type for artist ({}), must be str".format(
+                    self.artist))
         elif type(self.song) != str:
             raise ValueError(
-                "wrong data type for song ({self.song}), must be str")
+                "wrong data type for song ({}), must be str".format(self.song))
 
 
 class VideoCredit:
@@ -76,7 +77,8 @@ class VideoCredit:
         for performer in self.performers:
             if type(performer) != str:
                 raise ValueError(
-                    "wrong data type for performer ({performer}), must be str"
+                    "wrong data type for performer ({}), must be str".format(
+                        performer)
                 )
         if self.date is not None:
             try:
@@ -128,13 +130,13 @@ def _make_round_credits(
 ) -> Clip:
     texts = []
     texts += [["\n", "\n"]] * 16
-    if round_credits.audio is not []:
+    if round_credits.audio != []:
         texts += _make_credit_texts(
             str(round_credits.audio[0]),
             "ROUND {} MUSIC".format(round_index + 1))
         for audio_credit in round_credits.audio[1:]:
             texts += _make_credit_texts(str(audio_credit))
-    if round_credits.video is not []:
+    if round_credits.video != []:
         texts += _make_credit_texts(
             str(round_credits.video[0]),
             "ROUND {} VIDEOS".format(round_index + 1))
@@ -240,11 +242,7 @@ def make_credits(
             fontsize=fontsize,
             gap=gap
         ))
-    credits_intro = make_text_screen(
-        (width, height),
-        "Congratulations!",
-    )
-    return crossfade([credits_intro, *credits_videos])
+    return crossfade([get_black_clip((width, height)), *credits_videos])
 
 
 def _apply_to_leaves(tree, method) -> dict:
