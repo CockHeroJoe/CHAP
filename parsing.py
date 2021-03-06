@@ -171,12 +171,19 @@ class RoundConfig:
     }
 
     def __init__(self, config: dict or str, load=False):
-        if load:
-            if type(config) == str:
-                with open(config) as config_file:
+
+        settings_folder = os.path.abspath(os.getcwd())
+        if type(config) == str:
+            round_folder = os.path.abspath(os.path.dirname(config))
+            os.chdir(round_folder)
+            if load:
+                round_filename = os.path.basename(config)
+                with open(round_filename) as config_file:
                     config = yaml.load(config_file)
         if config["bmcfg"] is not None:
             self.load_beatmeter_config(config)
+
+        os.chdir(settings_folder)
 
         try:
             for attribute, validation in self.ITEMS.items():
@@ -359,13 +366,7 @@ class OutputConfig:
                 value = None if value is None else validation["type"](value)
                 if attribute == "rounds":
                     for r_i, r in enumerate(value):
-                        if type(r) == str:
-                            settings_folder = os.path.abspath(os.getcwd())
-                            round_folder = os.path.abspath(os.path.dirname(r))
-                            os.chdir(round_folder)
-                            value[r_i] = RoundConfig(r, True)
-                            os.chdir(settings_folder)
-                        elif type(r) == dict:
+                        if type(r) == str or type(r) == dict:
                             value[r_i] = RoundConfig(r, True)
                         elif type(r) == RoundConfig:
                             value[r_i] = r
