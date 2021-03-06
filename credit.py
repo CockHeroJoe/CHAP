@@ -230,6 +230,8 @@ def make_credits(
     """
     credits_videos = []
     for round_index, round_credits in enumerate(credits_data):
+        if round_credits is None:
+            continue
         credits_videos.append(_make_round_credits(
             round_credits,
             round_index,
