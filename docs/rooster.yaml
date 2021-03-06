@@ -61,8 +61,10 @@ rounds:
     bpm: 93.0 # Beats Per Minute of song
     duration: 12.0 # Length of round (should be length of song) in seconds
 
-    # These are PLANNED to be OVERRIDDEN by bmcfg (but are still needed)
-    beats: D:/Downloads/RoosterHero/01/beat_track.wav # Filepath of click track of beats
+    # These are PLANNED to be OVERRIDDEN by bmcfg (but are still NEEDED, if not default)
+    # default: beat_track.wav (name your output audio from Beatmeter generator this, ideally)
+    beats: D:/Downloads/RoosterHero/01/beat_track.wav # Filepath of click track of beat
+    # default: beats/ (name the folder containing your "video" from Beatmeter generator this, ideally)
     beatmeter: D:/Downloads/RoosterHero/01/beats_folder/ # Directory of images of beats
 
     sources: # A list of filepaths for source videos
