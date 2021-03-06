@@ -39,5 +39,5 @@ jobs:
           pyinstaller --onefile main.py
       - name: Package as MSI
         run: |
-          "%WIX%bin\\candle" wix.xml -o obj\
-          "%WIX%bin\\light" obj\*.wixobj -o bin\CHAP.msi
+          candle wix.xml -o obj\
+          light obj\*.wixobj -o bin\CHAP.msi
