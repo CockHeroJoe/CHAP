@@ -42,9 +42,10 @@ rounds:
 
     # Affects how source clips are selected in terms of their order
     cut: # Options: interleave, skip, randomize (default interleave)
-      "interleave" # Cut clips after semi-random intervals from all sources concurrently
-      # cut == skip -> Start then finish each source in sequence, skipping chunks
-      # cut == random -> Cut random clips from anywhere in any source
+      "interleave" # -> Cut clips after semi-random intervals from all sources concurrently
+      # skip -> Play through each source, skipping chunks, in order listed; longer sources play longer
+      # random -> Cut random clips from anywhere in any source
+      # sequence -> Play through all sources, skipping chunks, switching to next source each cut
 
     # Affects the relative volumes of source audio vs music/beats
     audio_level: # Options: any non-negative decimal number (default 0.0)
@@ -65,7 +66,7 @@ rounds:
     # default: beat_track.wav (name your output audio from Beatmeter generator this, ideally)
     beats: D:/Downloads/RoosterHero/01/beat_track.wav # Filepath of click track of beat
     # default: beats/ (name the folder containing your "video" from Beatmeter generator this, ideally)
-    beatmeter: D:/Downloads/RoosterHero/01/beats_folder/ # Directory of images of beats
+    beatmeter: D:/Downloads/RoosterHero/01/beats/ # Directory of images of beats
 
     sources: # A list of filepaths for source videos
       - D:/Downloads/RoosterHero/01/A_barnyard_with_chickens.mp4
@@ -80,7 +81,7 @@ rounds:
           date: 2019.10.19
           performers:
             - Father Rooster
-            - Rooster Wife
+            - Father Rooster's Bottom Hen
         - studio: Videezy
           title: Rooster Walking Around
           date: 2019.10.19
