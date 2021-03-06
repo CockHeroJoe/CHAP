@@ -138,6 +138,10 @@ dmypy.json
 *.mp4
 *.avi
 
+# FFMpeg metadata files
+*.ffmd
+inputs.txt
+
 # Editor Settings
 .vscode
 
