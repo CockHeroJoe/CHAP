@@ -38,7 +38,7 @@ jobs:
           pyinstaller --onefile main.py
       - name: Package as MSI
         run: |
-          $env:Path += `;${env:WIX\bin}`
+          $env:Path += ";${env:WIX}bin"
           echo $env:Path
           candle wix.xml -o obj\
           light obj\*.wixobj -o bin\CHAP.msi
