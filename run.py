@@ -3,6 +3,7 @@ import sys
 from contextlib import ExitStack, AbstractContextManager
 from threading import Thread
 import gc
+from math import ceil
 
 from moviepy.audio.AudioClip import CompositeAudioClip
 from moviepy.audio.fx.volumex import volumex
@@ -13,13 +14,13 @@ from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.fx.resize import resize
 
-from constants import TRANSITION_DURATION
+from constants import TRANSITION_DURATION, FFMPEG_PRESET
 from cutters import Interleaver, Skipper, Randomizer, Sequencer
 from credit import make_credits
 from utils import SourceFile,\
     get_black_clip,\
-    get_time_components,\
     get_round_name,\
+    make_metadata_file,\
     make_text_screen,\
     make_background,\
     crossfade
@@ -63,7 +64,7 @@ class ThreadWithReturnValue(Thread):
 
 def make(output_config: OutputConfig):
     ext = "avi" if output_config.raw else "mp4"
-    codec = "png" if output_config.raw else None
+    codec = "png" if output_config.raw else "mpeg4"
     output_name = output_config.name
     dims = (output_config.xdim, output_config.ydim)
 
@@ -97,9 +98,17 @@ def make(output_config: OutputConfig):
             if round_config.beatmeter is not None:
 
                 def make_beatmeter():
+                    fps = bmcfg.fps if bmcfg else output_config.fps
+                    beatmeter_folder = os.path.dirname(round_config.beatmeter)
+                    beat_image_filenames = [
+                        str(os.path.join(beatmeter_folder, filename))
+                        for filename in sorted(os.listdir(
+                            round_config.beatmeter)
+                        )[:ceil(round_config.duration * fps)]
+                    ]
                     beatmeter = stack.enter_context(ImageSequenceClip(
-                        round_config.beatmeter,
-                        fps=bmcfg.fps if bmcfg else output_config.fps
+                        beat_image_filenames,
+                        fps=fps
                     ))
                     # resize and fit beatmeter
                     new_height = (beatmeter.h * output_config.xdim
@@ -178,7 +187,7 @@ def make(output_config: OutputConfig):
                         filename,
                         codec=codec,
                         fps=output_config.fps,
-                        preset="ultrafast",
+                        preset=FFMPEG_PRESET,
                     )
                     stack.close()  # close all video files for this round
 
@@ -240,31 +249,33 @@ def make(output_config: OutputConfig):
             title2,
             get_black_clip(dims),
         ]
+        main_title_video = crossfade(main_title_clips)
 
         # Add credits, if data is available
-        credits_data_list = [
-            r.credits for r in round_configs
-            if r.credits is not None
-            and (r.credits.audio != [] or r.credits.video != [])
-        ]
+        credits_data_list = [r.credits for r in round_configs]
         credits_video_thread = None
         if credits_data_list != []:
             print("Assembling Credits...")
-            credits_video = make_credits(credits_data_list,
-                                         dims[0],
-                                         dims[1],
-                                         stroke_color=None,
-                                         gap=30)
-
-            credits_video_filename = "{}_Credits.{}".format(output_name, ext)
-            if output_config.cache != "all":
+            if output_config.cache == "all":
+                credits_video = make_credits(credits_data_list,
+                                             dims[0],
+                                             dims[1],
+                                             stroke_color=None,
+                                             gap=30)
+            else:
+                credits_video_filename = "%s_Credits.%s" % (output_name, ext)
                 if not os.path.exists(credits_video_filename):
+                    credits_video = make_credits(credits_data_list,
+                                                 dims[0],
+                                                 dims[1],
+                                                 stroke_color=None,
+                                                 gap=30)
                     credits_video_thread = Thread(
                         target=lambda: credits_video.write_videofile(
                             credits_video_filename,
                             codec=codec,
                             fps=output_config.fps,
-                            preset="slow",
+                            preset=FFMPEG_PRESET,
                         ))
                     credits_video_thread.start()
 
@@ -275,7 +286,6 @@ def make(output_config: OutputConfig):
             print("Beginning Final Assembly")
 
             # Reload rounds from output files, if not still in memory
-            print("Reloading Rounds...")
             rounds = [
                 stacks[r_i].enter_context(VideoFileClip(
                     get_round_name(output_name, round_config.name, ext)))
@@ -284,23 +294,44 @@ def make(output_config: OutputConfig):
             ]
 
             # Gather together all the videos
-            all_video = [None]*(3 * len(rounds))
+            all_video = [None]*(2 * len(rounds))
             all_video[0::2] = round_transitions
             all_video[1::2] = rounds
-            all_video = main_title_clips + all_video
+            all_video = [main_title_video] + all_video
             if credits_data_list != []:
                 all_video.append(credits_video)
 
             # Output final video
-            output = concatenate_videoclips(all_video)
-            name = "{}.{}".format(output_name, ext)
-            output.write_videofile(
-                name,
+            temp_video_name = "%s_TEMP.%s" % (output_name, ext)
+            concatenate_videoclips(all_video).write_videofile(
+                temp_video_name,
                 codec=codec,
                 fps=output_config.fps,
-                preset="slow",
-                threads=4
+                preset=FFMPEG_PRESET,
+                threads=4,
             )
+
+            # Prepare metadata file for chapter markers
+            round_lengths = [video.duration for video in all_video]
+            metadata_filename = output_name + ".ffmd"
+            make_metadata_file(metadata_filename,
+                               output_name,
+                               round_lengths,
+                               credits_data_list)
+
+            # Add metadata
+            # TODO: don't duplicate output file
+            command = "ffmpeg {} {} {} {} {}".format(
+                '-v quiet -stats -y',
+                '-i "concat:%s"' % temp_video_name,
+                '-i "%s"' % metadata_filename,
+                '-c copy -map_metadata 1',
+                '"%s.%s"' % (output_name, ext),
+            )
+            os.system(command)
+            os.remove(temp_video_name)
+            os.remove(metadata_filename)
+
         elif output_config.assemble:
             print("Writing Round Transitions and Main Title")
 
@@ -310,11 +341,11 @@ def make(output_config: OutputConfig):
             if not os.path.exists(main_title_filename):
                 # If it exists, don't remake it
                 main_title_thread = Thread(
-                    target=lambda: crossfade(main_title_clips).write_videofile(
+                    target=lambda: main_title_video.write_videofile(
                         main_title_filename,
                         codec=codec,
                         fps=output_config.fps,
-                        preset="slow",
+                        preset=FFMPEG_PRESET,
                     ))
                 if max_threads <= 1 and credits_video_thread is not None:
                     credits_video_thread.join()
@@ -336,7 +367,7 @@ def make(output_config: OutputConfig):
                             round_title_filename,
                             codec=codec,
                             fps=output_config.fps,
-                            preset="slow",
+                            preset=FFMPEG_PRESET,
                         )
 
                     thread = Thread(target=write_round_intro)
@@ -375,63 +406,17 @@ def make(output_config: OutputConfig):
                 thread.join()
             print("Beginning final assembly")
 
-            # Prepare metadata file
+            # Prepare metadata file for chapter markers
+            round_lengths = []
+            for filename in intermediate_filenames:
+                with VideoFileClip(filename) as video_file:
+                    round_lengths.append(video_file.duration)
             metadata_filename = output_name + ".ffmd"
-            with open(metadata_filename, "w") as metadata_filehandle:
-                metadata_filehandle.writelines([
-                    ";FFMETADATA1\n",
-                    "title=%s\n" % output_name,
-                    "artist=The One True Cock Hero\n",  # TODO: add performers?
-                ])
-
-                current_time_index = 0.0
-                for filename_i, filename in enumerate(intermediate_filenames):
-
-                    # Adjust time indices using length of next video to concat
-                    previous_time_index = current_time_index
-                    with VideoFileClip(filename) as video_file:
-                        current_time_index += video_file.duration
-
-                    round_index = (filename_i + 1) // 2
-                    if filename_i == 0:
-                        chapter_name = "Main Title"
-                    elif (filename_i == len(intermediate_filenames) - 1
-                          and credits_data_list != []):
-                        chapter_name = "Credits"
-                    elif filename_i % 2 == 1:  # If this is a round transition
-                        chapter_name = "Round %d Intro" % round_index
-                    else:
-                        chapter_name = "Round " + str(round_index)
-
-                    metadata_filehandle.writelines([
-                        "#\n",
-                        "# %s\n" % chapter_name.upper(),
-                        "#\n",
-                        "[CHAPTER]\n",
-                        "TIMEBASE=1/1000\n",
-                        "# %s start at %02i:%02i:%02i.%02i\n" % (
-                            chapter_name,
-                            *get_time_components(previous_time_index)
-                        ),
-                        "START=%i\n" % (previous_time_index * 1000),
-                        "# %s ends at %02i:%02i:%02i.%02i\n" % (
-                            chapter_name,
-                            *get_time_components(current_time_index - 0.001),
-                        ),
-                        "END=%i\n" % (current_time_index * 1000 - 1),
-                        "title=%s\n" % chapter_name,
-                    ])
-
-                metadata_filehandle.writelines([
-                    "#\n",
-                    "# END OF METADATA\n",
-                    "#\n",
-                    "[STREAM]\n"
-                    "title=%s\n" % output_name,
-                ])
+            make_metadata_file(metadata_filename, output_name,
+                               round_lengths, credits_data_list)
 
             # TODO: Don't use inputs.txt intermediate file
-            filelist_filename = "inputs.txt"
+            filelist_filename = "%s_inputs.txt" % output_name
             with open(filelist_filename, "w") as filelist_handle:
                 filelist_handle.writelines([
                     "file '%s'\n" % intermediate_filename
@@ -439,17 +424,19 @@ def make(output_config: OutputConfig):
                 ])
                 intermediate_filenames.append(filelist_filename)
 
-            command = "ffmpeg {} {} -c copy {} {}".format(
-                "-v quiet -stats -f concat -y -safe 0",
-                "-i %s -i %s" % (filelist_filename, metadata_filename),
-                "-map_metadata 1",
-                output_name + "." + ext
+            command = "ffmpeg {} {} {} {} {}".format(
+                '-v quiet -stats -y -f concat',
+                '-i "%s"' % filelist_filename,
+                '-i "%s"' % metadata_filename,
+                '-c copy -map_metadata 1',
+                '"%s.%s"' % (output_name, ext),
             )
             os.system(command)
 
         if output_config.delete:
             # delete intermediate files
             print("Deleting Files")
+            intermediate_filenames.append(metadata_filename)
             for intermediate_filename in intermediate_filenames:
                 if os.path.exists(intermediate_filename):
                     os.remove(intermediate_filename)
