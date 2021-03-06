@@ -46,7 +46,8 @@ def make_text_screen(
         text: str,
         duration: float = TRANSITION_DURATION,
         background: VideoClip = None,
-        font=70,
+        font='Impact-Normal',
+        fontsize=70,
         color="white"):
     if background is None:
         background = get_black_clip(dimensions, duration)
@@ -54,7 +55,8 @@ def make_text_screen(
         background,
         with_silence(TextClip(
             text,
-            fontsize=font,
+            font=font,
+            fontsize=fontsize,
             color=color
         ).set_position("center").set_duration(duration))
     ])
@@ -93,3 +95,12 @@ def draw_progress_bar(percent: float, barLen: int = 20):
     sys.stdout.write("{:<{}} {:.0f}%".format(
         "." * int(barLen * percent), barLen, percent * 100))
     sys.stdout.flush()
+
+
+def get_time_components(time_in_seconds: float) -> (int, int, int, int):
+    return (
+        int(time_in_seconds // 3600),           # hours
+        int((time_in_seconds // 60) % 60),      # minutes
+        int(time_in_seconds) % 60,              # seconds
+        int((1000 * time_in_seconds) % 1000)    # milliseconds
+    )
