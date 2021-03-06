@@ -11,6 +11,7 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.VideoClip import TextClip, VideoClip, ColorClip
 
 from constants import FADE_DURATION, TRANSITION_DURATION
+from credit import RoundCredits
 
 
 class SourceFile:
@@ -104,3 +105,70 @@ def get_time_components(time_in_seconds: float) -> (int, int, int, int):
         int(time_in_seconds) % 60,              # seconds
         int((1000 * time_in_seconds) % 1000)    # milliseconds
     )
+
+
+def _escape(value: str):
+    return value.replace(
+        "\\", "\\\\"
+    ).replace(
+        "=", "\\="
+    ).replace(
+        ";", "\\;"
+    ).replace(
+        "#", "\\#"
+    )
+
+
+def make_metadata_file(
+    metadata_filename: str,
+    output_name: str,
+    round_lengths: [float],
+    credits_data_list: [RoundCredits]
+):
+    with open(metadata_filename, "w") as metadata_filehandle:
+        audio_artists = []
+        audio_tracks = []
+        video_artists = []
+        for round_credit in credits_data_list:
+            for audio_credit in round_credit.audio:
+                audio_artists.append(_escape(audio_credit.artist))
+                audio_tracks.append(_escape(audio_credit.song))
+            for video_credit in round_credit.video:
+                for performer in video_credit.performers:
+                    video_artists.append(_escape(performer))
+
+        metadata_filehandle.writelines([
+            ";FFMETADATA1\n",
+            "title=%s\n" % _escape(output_name),
+            "album_artist=%s\n" % ",".join(audio_artists),
+            "album=%s\n" % ",".join(audio_tracks),
+            "artist=%s\n" % ",".join(video_artists),
+        ])
+
+        current_time_index = 0.0
+        for idx, length in enumerate(round_lengths):
+            previous_time_index = current_time_index
+            current_time_index += length
+            round_index = (idx + 1) // 2
+
+            if idx == 0:
+                chapter_name = "Main Title"
+            elif idx == len(round_lengths) - 1 and credits_data_list != []:
+                chapter_name = "Credits"
+            elif idx % 2 == 1:  # If this is a round transition
+                chapter_name = "Round %i Intro" % round_index
+            else:
+                chapter_name = "Round " + str(round_index)
+
+            metadata_filehandle.writelines([
+                "[CHAPTER]\n",
+                "TIMEBASE=1/1000\n",
+                "START=%i\n" % (previous_time_index * 1000),
+                "END=%i\n" % (current_time_index * 1000 - 1),
+                "title=%s\n" % chapter_name,
+            ])
+
+        metadata_filehandle.writelines([
+            "[STREAM]\n"
+            "title=%s\n" % _escape(output_name),
+        ])
