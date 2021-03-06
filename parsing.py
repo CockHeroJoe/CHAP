@@ -8,6 +8,7 @@ from urllib.parse import unquote
 from string import ascii_letters
 
 from credit import RoundCredits
+from constants import DEFAULT_FPS
 
 
 def get_random_name():
@@ -272,7 +273,7 @@ class OutputConfig:
             "type": float,
             "min": 1,
             "max": 360,
-            "default": 60,
+            "default": DEFAULT_FPS,
             "help": "output frames per second"
         },
         "xdim": {
@@ -350,7 +351,8 @@ class OutputConfig:
                 ))
                 sys.exit(1)
             os.chdir(os.path.abspath(os.path.dirname(settings_filepath)))
-            with open(settings_filepath) as settings_filehandle:
+            settings_filename = os.path.basename(settings_filepath)
+            with open(settings_filename) as settings_filehandle:
                 file_contents = yaml.full_load(settings_filehandle)
         else:
             file_contents = dict()
