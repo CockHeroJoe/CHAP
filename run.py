@@ -329,8 +329,6 @@ def make(output_config: OutputConfig):
                 '"%s.%s"' % (output_name, ext),
             )
             os.system(command)
-            os.remove(temp_video_name)
-            os.remove(metadata_filename)
 
         elif output_config.assemble:
             print("Writing Round Transitions and Main Title")
@@ -384,19 +382,20 @@ def make(output_config: OutputConfig):
 
     if output_config.assemble:
         # TODO: Assemble this list as files are output/found
-        main_title_filename = "%s_Title.%s" % (output_name, ext)
-        intermediate_filenames = [main_title_filename]
-        for r_i, round_config in enumerate(round_configs):
-            round_name = round_config.name
-            round_title_filename = get_round_name(
-                output_name, round_name + "_Title", ext)
-            intermediate_filenames.append(round_title_filename)
-            round_filename = get_round_name(output_name, round_name, ext)
-            intermediate_filenames.append(round_filename)
-        if credits_data_list != []:
-            intermediate_filenames.append(credits_video_filename)
 
+        intermediate_filenames = []
         if output_config.cache != "all":
+            main_title_filename = "%s_Title.%s" % (output_name, ext)
+            intermediate_filenames += [main_title_filename]
+            for r_i, round_config in enumerate(round_configs):
+                round_name = round_config.name
+                round_title_filename = get_round_name(
+                    output_name, round_name + "_Title", ext)
+                intermediate_filenames.append(round_title_filename)
+                round_filename = get_round_name(output_name, round_name, ext)
+                intermediate_filenames.append(round_filename)
+            if credits_data_list != []:
+                intermediate_filenames.append(credits_video_filename)
             print("Waiting for all parts to finish...")
             if main_title_thread is not None:
                 main_title_thread.join()
@@ -432,8 +431,10 @@ def make(output_config: OutputConfig):
                 '"%s.%s"' % (output_name, ext),
             )
             os.system(command)
+        else:
+            intermediate_filenames.append(temp_video_name)
 
-        if output_config.delete:
+        if output_config.delete or output_config.cache == "all":
             # delete intermediate files
             print("Deleting Files")
             intermediate_filenames.append(metadata_filename)
