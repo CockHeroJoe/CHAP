@@ -1,0 +1,89 @@
+# Comments like this can be removed or left in
+# NOTE: all file paths should be absolute (starting at C:/ or D:/, etc. in Windows)
+name: Rooster Hero
+
+# Affect the dimensions of the video.
+# They should match the aspect ratio of all source files
+xdim: 1280
+ydim: 720 # This is 720p widescreen resolution
+# Default: 1920x1080 -> 1080p widescreen
+
+# Affects the framerate of the output video
+fps: # Options: any positive integer (Default: 60)
+  60 # Recommended to avoid beatmeter smudging, otherwise 30 fps
+
+# Affects quality and size. "raw" video is very big for slightly better quality.
+raw: false # Options: [true, false] (Default: false)
+
+# Affects whether intermediate video files (rounds) are deleted after assembly.
+delete: false # Options: [true, false] (Default: false)
+
+# Affects whether rounds are assembled with transitions and credits into video
+assemble: true # Options: [true, false] (Default: false)
+
+# Affects how often videos are saved.
+cache: all # Options: [round, all] (default: round)
+
+# The filepath of this configuration file, set in program
+# _settings:
+
+# Each NEEDS name, sources
+# Add bmcfg (plus beats and beatmeter, fow now), (and optionally credits)
+# Customize speed, cut, audio_level, if default not desired
+# NOTE: Instead of rounds, you can list filepaths of round_config yaml files
+rounds:
+  - name: Domesticated Cocks # Displayed during round transitions
+
+    # Affects how many cuts per bar
+    speed: # Options: [1, 2, 3, 4, 5] (default 3)
+      5 # speed == 5 -> 4 cuts per bar
+      # speed == 3 -> one cut per bar
+      # speed == 1 -> 1 cut per 4 bars
+
+    # Affects how source clips are selected in terms of their order
+    cut: # Options: interleave, skip, randomize (default interleave)
+      "sequence" # -> Play through all sources, skipping chunks, switching to next source each cut
+      # interleave -> Cut clips after semi-random intervals from all sources concurrently
+      # random -> Cut random clips from anywhere in any source
+      # skip -> Play through each source, skipping chunks, in order listed; longer sources play longer
+
+    # Affects the relative volumes of source audio vs music/beats
+    audio_level: # Options: any non-negative decimal number (default 0.0)
+      0.1 # audio level == 0.1 -> Source audio at 10%, music/beats at 100%
+      # audio level == 0.0 -> Source audio at 0%, music/beats at 100%
+      # audio level == 10.0 -> Source audio at 100%, music/beats at 10%
+
+    # NOTE: this option is IMPORTANT and overrides several others
+    # The filepath of the config file from the beatmeter generator
+    bmcfg: Scott.Joplin-the.Entertainer-2020.10.19.bmcfg.json
+
+    # These are OVERRIDDEN by bmcfg, don't bother setting them if you use set bmcfg
+    music: The.Entertainer.wav # The song's filepath
+    bpm: 93.0 # Beats Per Minute of song
+    duration: 12.0 # Length of round (should be length of song) in seconds
+
+    # These are PLANNED to be OVERRIDDEN by bmcfg (but are still NEEDED, if not default)
+    # default: beat_track.wav (name your output audio from Beatmeter generator this, ideally)
+    beats: beat_track.wav # Filepath of click track of beat
+    # default: beats/ (name the folder containing your "video" from Beatmeter generator this, ideally)
+    beatmeter: beats/ # Directory of images of beats
+
+    sources: # A list of filepaths for source videos
+      - A_barnyard_with_chickens.mp4
+      - rooster.mp4
+    credits: # A list of credits for this round
+      audio:
+        - artist: Scott Joplin # Probably not the best song,
+          song: The Entertainer # but it's in the public domain :D
+      video: # NOTE: The order should match the order in sources, when using skip
+        - studio: Videezy
+          title: A Barnyard With Chickens
+          date: 2019.10.19
+          performers:
+            - Father Rooster
+            - Father Rooster's Bottom Hen
+        - studio: Videezy
+          title: Rooster Walking Around
+          date: 2019.10.19
+          performers:
+            - The Blackest Cock

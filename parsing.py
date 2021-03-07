@@ -172,7 +172,6 @@ class RoundConfig:
     }
 
     def __init__(self, config: dict or str, load=False):
-
         settings_folder = os.path.abspath(os.getcwd())
         if type(config) == str:
             round_folder = os.path.abspath(os.path.dirname(config))
@@ -185,6 +184,16 @@ class RoundConfig:
             self.load_beatmeter_config(config)
 
         os.chdir(settings_folder)
+
+        for index, source in enumerate(config.get("sources", [])):
+            config["sources"][index] = str(os.path.abspath(source))
+
+        if "beatmeter" in config:
+            config["beatmeter"] = str(os.path.abspath(config["beatmeter"]))
+        print(config["beatmeter"])
+        if "beats" in config:
+            config["beats"] = str(os.path.abspath(config["beats"]))
+        print(config["beats"])
 
         try:
             for attribute, validation in self.ITEMS.items():
@@ -344,16 +353,17 @@ class OutputConfig:
 
         current_folder = os.path.abspath(os.getcwd())
         settings_filepath = args["_settings"]
-        if settings_filepath != "" and load:
+        if settings_filepath != "":
             if not os.path.exists(settings_filepath):
                 print("Settings file ({}) not found".format(
                     settings_filepath
                 ))
                 sys.exit(1)
             os.chdir(os.path.abspath(os.path.dirname(settings_filepath)))
-            settings_filename = os.path.basename(settings_filepath)
-            with open(settings_filename) as settings_filehandle:
-                file_contents = yaml.full_load(settings_filehandle)
+            if load:
+                settings_filename = os.path.basename(settings_filepath)
+                with open(settings_filename) as settings_filehandle:
+                    file_contents = yaml.full_load(settings_filehandle)
         else:
             file_contents = dict()
 
@@ -371,7 +381,7 @@ class OutputConfig:
                         if type(r) == str or type(r) == dict:
                             value[r_i] = RoundConfig(r, True)
                         elif type(r) == RoundConfig:
-                            value[r_i] = r
+                            value[r_i] = RoundConfig(r, False)
                         else:
                             print("ERROR: Settings invalid round: {}".format(
                                 repr(r)

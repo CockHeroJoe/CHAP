@@ -99,9 +99,8 @@ def make(output_config: OutputConfig):
 
                 def make_beatmeter():
                     fps = bmcfg.fps if bmcfg else output_config.fps
-                    beatmeter_folder = os.path.dirname(round_config.beatmeter)
                     beat_image_filenames = [
-                        str(os.path.join(beatmeter_folder, filename))
+                        str(os.path.join(round_config.beatmeter, filename))
                         for filename in sorted(os.listdir(
                             round_config.beatmeter)
                         )[:ceil(round_config.duration * fps)]

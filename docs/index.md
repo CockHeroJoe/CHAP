@@ -8,7 +8,7 @@ This utility seeks to automate most of the creation process for "Cock Hero" vide
 
 ## Example Output
 
-Generated with [`docs/rooster.yaml`](rooster.yaml) configuration file.
+Generated with [`rooster.yaml`](rooster-hero/rooster.yaml) configuration file and a small [beatmeter config](rooster-hero/Scott.Joplin-the.Entertainer-2020.10.19.bmcfg.json).
 
 !["Rooster Hero"](rooster-hero.gif)
 
