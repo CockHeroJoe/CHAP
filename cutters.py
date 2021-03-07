@@ -150,6 +150,18 @@ class _AbstractCutter(metaclass=ABCMeta):
             min_start = 0
         source.start = max(min_start, start)
 
+    def _advance_source(
+        self,
+        source: SourceFile,
+        length: float,
+        current_time: float
+    ):
+        current_progress = current_time / self.round_config.duration
+        time_in_source = current_progress * source.clip.duration
+        randomized_start = random.gauss(time_in_source, self.versions * length)
+        randomized_start = min(randomized_start, source.clip.duration - length)
+        self._set_start(source, randomized_start, length)
+
 
 class _AbstractRandomSelector(_AbstractCutter):
     def get_source_clip_index(self, length: float) -> int:
@@ -170,25 +182,23 @@ class _AbstractRandomSelector(_AbstractCutter):
 class Interleaver(_AbstractRandomSelector):
     def advance_sources(self, length: float, current_time: float):
         for source in self.sources:
-            current_progress = current_time / self.round_config.duration
-            time_in_source = current_progress * source.clip.duration
-            deviation = self.versions * length
-            randomized_start = random.gauss(time_in_source, deviation)
-            self._set_start(source, randomized_start, length)
+            self._advance_source(source, length, current_time)
 
 
 class Randomizer(_AbstractRandomSelector):
     def advance_sources(self, length: float, current_time: float):
         for source in self.sources:
-            max_start = source.clip.duration - length * 2
+            max_start = source.clip.duration - length
             randomized_start = random.uniform(0, max_start)
+            max_start = source.clip.duration - length
+            randomized_start = min(randomized_start, max_start)
             self._set_start(source, randomized_start, length)
 
 
 class Sequencer(_AbstractCutter):
     def get_source_clip_index(self, length: float) -> int:
         source = self.sources[self._index]
-        if source.start + length >= source.clip.duration:
+        if source.start + length > source.clip.duration:
             print("Warning: not enough source material")
             source.start /= 2
             return self.get_source_clip_index(length)
@@ -199,11 +209,7 @@ class Sequencer(_AbstractCutter):
             return index
 
     def advance_sources(self, length: float, current_time: float):
-        source = self.sources[self._index]
-        current_progress = current_time / self.round_config.duration
-        time_in_source = current_progress * source.clip.duration
-        randomized_start = random.gauss(time_in_source, self.versions * length)
-        self._set_start(source, randomized_start, length)
+        self._advance_source(self.sources[self._index], length, current_time)
 
 
 class Skipper(_AbstractCutter):
@@ -211,6 +217,7 @@ class Skipper(_AbstractCutter):
         source = self.sources[self._index]
         if source.start + length >= source.clip.duration:
             self._index += 1
+            self._set_start(self.sources[self._index], 0, length)
         if self._index >= len(self.sources):
             print("Warning: not enough source material")
             for source in self.sources:
