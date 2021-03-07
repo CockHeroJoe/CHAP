@@ -119,7 +119,7 @@ file 'MyVideo_Credits.mp4'
 ### Configuration Files
 
 Configuration file(s) (of `yaml` format) can be manually prepared and edited.
-For power users, this may be faster than using the GUI. See [example](docs/rooster.yaml) settings config.
+For power users, this may be faster than using the GUI. See [example](rooster.yaml) settings config to get started.
 
 A Cock Hero video is defined by a top-level `settings.yaml` as well as many optional `round_config.yaml`s.
 The contents of each `round_config.yaml` may be included directly in the `settings.yaml`, or their paths may be listed instead. All paths may be relative (to the config file containing them) or absolute.
@@ -134,9 +134,11 @@ A `settings.yaml` configuration file can be generated and saved from the GUI (al
 
 #### Round Configuration Files
 
-Each round is described by a `yaml` file. See the [example](docs/rooster_round01.yaml) for an example.
+Each round is described by a `yaml` file. Round configuration files are also optional, since they may be directly included in the `settings.yaml` file.
 
 A round consists of a song and some videos, beats and beatmeter, as well as other metadata.
+
+Start with the [template](round_template.yaml) to write your own.
 
 ##### Required Fields
 
