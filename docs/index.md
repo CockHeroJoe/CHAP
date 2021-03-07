@@ -19,7 +19,7 @@ Public Domain music (The Entertainer) from [YouTube](https://youtu.be/fPmruHc4S9
 
 The process to create a video is:
 
-- Download and [install this program](#Install).
+- Download and [install this program](#install).
 - Download and install the [Beatmeter Generator](https://gitlab.com/SklaveDaniel/BeatmeterGenerator/).
 - Download and install [FFMpeg](https://ffmpeg.org/)
 - Download video for each round (about 1-10 videos _per round_).
@@ -52,7 +52,7 @@ The process to create a video is:
   - Run:
     - If `versions` is more than 1, select your preferred version of each clip.
       - Use keyboard or mouse to select version.
-      - See [preview controls](#Preview-Controls) for details.
+      - See [preview controls](#preview-controls) for details.
       - **Note** if multiple `versions` and `cache` is not `all`,
         then you may have to wait after each version for round video to be written
         before the next round's clips are previewed, depending on `threads`.
@@ -128,7 +128,7 @@ The contents of each `round_config.yaml` may be included directly in the `settin
 
 The `settings.yaml` configuration file is optional. The same options can be directly passed in as command-line arguments. Command-line arguments overwrite those given in the configuration file.
 
-For a list of allowed options and values, see [Command Line Options](#Command-Line-Options).
+For a list of allowed options and values, see [Command Line Options](#command-line-options).
 
 A `settings.yaml` configuration file can be generated and saved from the GUI (although it is more verbose, repetitive, and not as human readable).
 
