@@ -11,7 +11,6 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.VideoClip import TextClip, VideoClip, ColorClip
 
 from constants import FADE_DURATION, TRANSITION_DURATION
-from credit import RoundCredits
 
 
 class SourceFile:
@@ -123,7 +122,7 @@ def make_metadata_file(
     metadata_filename: str,
     output_name: str,
     round_lengths: [float],
-    credits_data_list: [RoundCredits]
+    credits_data_list: list
 ):
     with open(metadata_filename, "w") as metadata_filehandle:
         audio_artists = []
