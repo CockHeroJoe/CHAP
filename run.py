@@ -124,19 +124,6 @@ def make(output_config: OutputConfig):
                 print("Assembling beatmeter #{}...".format(r_i + 1))
                 beatmeter_thread.start()
 
-            # Assemble audio from music and beats
-            audio = None
-            if (round_config.music is not None
-                    or round_config.beats is not None):
-                audio = [
-                    stack.enter_context(AudioFileClip(clip))
-                    for clip in [
-                        round_config.beats,
-                        round_config.music,
-                    ]
-                    if clip is not None
-                ]
-
             # TODO: get duration, bpm from music track; generate beats & meter
 
             # Generate interleaved clips from sources
@@ -155,6 +142,18 @@ def make(output_config: OutputConfig):
             cutter = Cutter(output_config, round_config, bmcfg, sources)
             clips = cutter.get_compilation()
 
+            # Assemble audio from music and beats
+            audio = None
+            if (round_config.music is not None
+                    or round_config.beats is not None):
+                audio = [
+                    stack.enter_context(AudioFileClip(clip))
+                    for clip in [
+                        round_config.beats,
+                        round_config.music,
+                    ]
+                    if clip is not None
+                ]
             # Concatenate this round's video clips together and add beatmeter
             round_i = concatenate_videoclips(clips)
             if round_config.beatmeter is not None:
