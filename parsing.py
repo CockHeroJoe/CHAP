@@ -63,8 +63,11 @@ class BeatMeterConfig:
                         if data["flying"] else
                         "waveformBeatmeter"]["frames"]
 
-        music_path = unquote(data["audio"]["#elems"][0])
-        self.music = str(os.path.abspath(music_path))
+        if data["audio"] and data["audio"].get("#elems", False):
+            music_path = unquote(data["audio"]["#elems"][0])
+            self.music = str(os.path.abspath(music_path))
+        else:
+            self.music = None
 
         base_content = list(filter(lambda e: e["title"] == "Base",
                                    data["content"]["#elems"])
@@ -79,7 +82,7 @@ class BeatMeterConfig:
             raise ValueError(
                 "BMCFG: wrong type for fps ({}), must be float".format(
                     self.fps))
-        elif type(self.music) != str:
+        elif self.music is not None and type(self.music) != str:
             raise ValueError(
                 "BMCFG: wrong type for music ({}), must be str".format(
                     self.music))
