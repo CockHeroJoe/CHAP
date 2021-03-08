@@ -183,20 +183,20 @@ class RoundConfig:
                 round_filename = os.path.basename(config)
                 with open(round_filename) as config_file:
                     config = yaml.load(config_file)
-        if config["bmcfg"] is not None:
+        if config.get("bmcfg", None) is not None:
             self.load_beatmeter_config(config)
-
-        os.chdir(settings_folder)
 
         for index, source in enumerate(config.get("sources", [])):
             config["sources"][index] = str(os.path.abspath(source))
 
         if "beatmeter" in config:
             config["beatmeter"] = str(os.path.abspath(config["beatmeter"]))
-        print(config["beatmeter"])
         if "beats" in config:
             config["beats"] = str(os.path.abspath(config["beats"]))
-        print(config["beats"])
+        if config.get("music", None) is not None:
+            config["music"] = str(os.path.abspath(config["music"]))
+
+        os.chdir(settings_folder)
 
         try:
             for attribute, validation in self.ITEMS.items():
