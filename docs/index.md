@@ -99,7 +99,7 @@ To disable the GUI, use the `-e` (`--execute`) flag.
 ### Configuration Files
 
 Configuration file(s) (of `yaml` format) can be manually prepared and edited.
-For power users, this may be faster than using the GUI. See [example](rooster.yaml) settings config to get started.
+For power users, this may be faster than using the GUI. See [example](rooster-hero/rooster.yaml) settings config to get started.
 
 A Cock Hero video is defined by a top-level `settings.yaml` as well as many optional `round_config.yaml`s.
 The contents of each `round_config.yaml` may be included directly in the `settings.yaml`, or their paths may be listed instead. All paths may be relative (to the config file containing them) or absolute.
@@ -227,7 +227,7 @@ This option allows you to customize the random clips that are chosen.
 **Note**: Saving and recovery are disabled by the `cache`=`all` option.
 
 Repeating the same compilation from the same working directory should only create new rounds.
-Rounds with the same name (each determined by `output` and the filename of the round config `yaml`)
+Rounds with the same name (each determined by `output` and the name in the round config `yaml`)
 are reloaded.
 
 To replace a round, simply delete the unwanted round video (E.G. "Rooster Hero_r01.mp4")
@@ -240,7 +240,7 @@ Credits data is optionally included in Round Config `.yaml`s.
 If any round has some credits data, then a scrolling credits screen will be added onto the final
 output video, if the `assemble` option is active.
 
-Each field in a credit is optional, but if an field exists, then it should be full of data.
+Each field in a credit is optional, but if an field exists, then it should be full of valid data.
 The fields are each processed as strings, including date, so any value is fine.
 
 ## Contributing
