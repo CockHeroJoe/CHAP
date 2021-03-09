@@ -50,7 +50,8 @@ class VideoCredit:
         fields = [
             f for f in [
                 self.studio,
-                datetime.strptime(self.date, "%Y.%m.%d").strftime("%B %d, %Y"),
+                self.date and datetime.strptime(
+                    self.date, "%Y.%m.%d").strftime("%B %d, %Y"),
                 self.title,
                 *self.performers
             ] if f is not None
