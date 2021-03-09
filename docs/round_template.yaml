@@ -1,12 +1,13 @@
 name: ROUND NAME
 speed: 4 # cut every 2 beats (doubles number of cuts per step)
 audio_level: 0.5 # source audio half as loud
-cut: skip # or sequence or interleave or random
-      # interleave -> Cut clips after semi-random intervals from all sources concurrently
-      # skip -> Play through each source, skipping chunks, in order listed; longer sources play longer
-      # random -> Cut random clips from anywhere in any source
-      # sequence -> Play through all sources, skipping chunks, switching to next source each cut
-bmcfg: ARTST.NAME-SONG.NAME-YYYY.MM.DD.bmcfg.json # Made with beatmeter generator
+cut:
+  skip # or sequence or interleave or random
+  # interleave -> Cut clips after semi-random intervals from all sources concurrently
+  # skip -> Play through each source, skipping chunks, in order listed; longer sources play longer
+  # random -> Cut random clips from anywhere in any source
+  # sequence -> Play through all sources, skipping chunks, switching to next source each cut
+bmcfg: ARTIST.NAME-SONG.NAME-YYYY.MM.DD.bmcfg.json # Made with beatmeter generator
 sources:
   - D:/path/to/some/video.mp4 # Windows
   - /home/user/videos/some_video.mp4 # Linux/Mac
