@@ -1,31 +1,64 @@
+from abc import ABCMeta, abstractmethod
 import random
+from contextlib import ExitStack
+from tkinter import TclError
 
 from moviepy.Clip import Clip
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.fx.resize import resize
 
 from utils import draw_progress_bar, SourceFile
-from parsing import RoundConfig, OutputConfig, BeatMeterConfig
+from parsing import BeatMeterConfig, OutputConfig, RoundConfig
 from preview import PreviewGUI
-from tkinter import TclError
-from abc import ABCMeta, abstractmethod
+
+
+def get_cutter(
+    stack: ExitStack,
+    output_config: OutputConfig,
+    round_config: RoundConfig
+):
+    sources = [SourceFile(stack.enter_context(VideoFileClip(s)))
+               for s in round_config.sources]
+    bmcfg = (round_config.beatmeter_config
+             if round_config.bmcfg else None)
+
+    Cutter = {
+        "skip": Skipper,
+        "interleave": Interleaver,
+        "randomize": Randomizer,
+        "sequence": Sequencer
+    }[round_config.cut]
+    return Cutter(output_config.versions,
+                  output_config.fps,
+                  (output_config.xdim, output_config.ydim),
+                  round_config.duration,
+                  round_config.speed,
+                  round_config.bpm,
+                  bmcfg,
+                  sources)
 
 
 class _AbstractCutter(metaclass=ABCMeta):
 
     def __init__(
         self,
-        output_config: OutputConfig,
-        round_config: RoundConfig,
+        versions: int,
+        fps: int,
+        dims: (int, int),
+        duration: float,
+        speed: int,
+        bpm: float,
         beatmeter_config: BeatMeterConfig,
         sources: [VideoFileClip]
     ) -> [Clip]:
-        self.versions = output_config.versions
-        self.output_config = output_config
-        self.round_config = round_config
+        self.versions = versions
+        self.fps = fps
+        self.dims = dims
+        self.duration = duration
+        self.speed = speed
+        self.bpm = bpm
         self.sources = sources
         self.bmcfg = beatmeter_config
-        self.per_input_length = round_config.duration / len(sources)
         self.all_sources_length = sum(map(lambda s: s.clip.duration, sources))
         self._index = 0
 
@@ -34,19 +67,16 @@ class _AbstractCutter(metaclass=ABCMeta):
         pass
 
     def get_compilation(self):
-        duration = self.round_config.duration
+        duration = self.duration
         clips = []
-        max_multiple = 32 - self.round_config.speed ** 2
-        min_multiple = 21 - self.round_config.speed * 4
-        seconds_per_beat = 60 / self.round_config.bpm
 
         # Cut randomized clips from random videos in chronological order
 
         section_index = 0
         subsection_index = 0
-        sections = self.bmcfg.sections
+        sections = self.bmcfg.sections if self.bmcfg else []
         current_time = 0.0
-        frame_time = 1.0 / self.output_config.fps
+        frame_time = 1.0 / self.fps
         while duration - current_time > frame_time:
             # Select random clip length that is a whole multiple of beats long
             if self.bmcfg and len(sections) >= 1:
@@ -59,8 +89,8 @@ class _AbstractCutter(metaclass=ABCMeta):
                                           else section.stop)
                     section_length = next_section_start - section.start
                     subsection_length = section.pattern_duration or (
-                        4 * 60 / (section.bpm or self.round_config.bpm))
-                    subsection_length *= 2 ** (3 - self.round_config.speed)
+                        4 * 60 / (section.bpm or self.bpm))
+                    subsection_length *= 2 ** (3 - self.speed)
                     if subsection_length >= section_length:
                         subsection_length = section_length
                     num_subsections = round(section_length / subsection_length)
@@ -85,13 +115,13 @@ class _AbstractCutter(metaclass=ABCMeta):
                 subsection_index += 1
             else:
                 # Simple accelerating cuts if beatmeter config is not provided
-                current_min_multiple = int(
-                    (1 - 0.66 * current_time / duration) * min_multiple)
-                current_max_multiple = int(
-                    (1 - 0.66 * current_time / duration) * max_multiple)
-                length = seconds_per_beat * max(4, round(
-                    random.randrange(current_min_multiple,
-                                     current_max_multiple)))
+                seconds_per_beat = 60 / self.bpm
+                current_multiple = 4 * 2 ** (5 - self.speed)
+                current_progress = current_time / duration
+                for step in (0.25, 0.5, 0.75):
+                    if current_progress > step:
+                        current_multiple /= 2
+                length = seconds_per_beat * max(1, current_multiple)
 
             # Cut multiple clips from various sources
             out_clips = []
@@ -101,13 +131,12 @@ class _AbstractCutter(metaclass=ABCMeta):
 
                 # Get the next clip source
                 i = self.get_source_clip_index(length)
-                clip = self.sources[i].clip
+                out_clip = self.sources[i].clip
                 start = self.sources[i].start
 
                 # Cut a subclip
-                out_clip = resize(clip.subclip(start, start + length),
-                                  (self.output_config.xdim,
-                                   self.output_config.ydim))
+                out_clip = out_clip.subclip(start, start + length)
+                out_clip = resize(out_clip, self.dims)
                 out_clips.append(out_clip)
 
             self.choose_version(out_clips)
@@ -156,7 +185,7 @@ class _AbstractCutter(metaclass=ABCMeta):
         length: float,
         current_time: float
     ):
-        current_progress = current_time / self.round_config.duration
+        current_progress = current_time / self.duration
         time_in_source = current_progress * source.clip.duration
         randomized_start = random.gauss(time_in_source, self.versions * length)
         randomized_start = min(randomized_start, source.clip.duration - length)
@@ -232,7 +261,7 @@ class Skipper(_AbstractCutter):
             lambda s: s.clip.duration,
             self.sources[:self._index]))
         completed_fraction /= self.all_sources_length
-        current_progress = current_time / self.round_config.duration
+        current_progress = current_time / self.duration
         current_progress_in_source = ((current_progress - completed_fraction)
                                       / length_fraction)
         time_in_source = current_progress_in_source * source.clip.duration
