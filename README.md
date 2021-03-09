@@ -92,29 +92,9 @@ Download the [installer](https://github.com/CockHeroJoe/CHAP/releases/latest/dow
 
 ## Advanced Usage
 
-All features and options accessible via the main GUI are also accessible via the CLI.
+All features and options accessible via the main GUI are also accessible via the CLI. At the least, round configuration files must be passed as the positional arguments to `main.py` as well as the `--name` of your video.
 
 To disable the GUI, use the `-e` (`--execute`) flag.
-
-**Note**
-
-Using the `assemble` option is convenient, but very slow. Instead, once all rounds and transitions are output, use ffmpeg to concatenate them together:
-
-```
-ffmpeg -f concat -safe 0 -i input.txt -c copy output.mp4
-```
-
-The `input.txt` file (that you must create) is simply a list of all the round files in the desired order. It looks like this:
-
-```
-file 'MyVideo_Title.mp4'
-file 'MyVideo_Round1_Title.mp4'
-file 'MyVideo_Round1.mp4'
-...
-file 'MyVideo_Round1_Title.mp4'
-file 'MyVideo_RoundN.mp4'
-file 'MyVideo_Credits.mp4'
-```
 
 ### Configuration Files
 
