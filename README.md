@@ -78,7 +78,7 @@ The following keyboard shortcuts allow you to control playback:
 
 ### Using Windows Installer
 
-Download the [installer](https://github.com/CockHeroJoe/CHAP/releases/download/v2.0.2-alpha/CHAP.msi) and run it.
+Download the [installer](https://github.com/CockHeroJoe/CHAP/releases/latest/download/CHAP.msi) and run it.
 
 ### From Source
 
